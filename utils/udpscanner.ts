@@ -217,12 +217,14 @@ export class UDPScanner {
 export const startDuckiebotDiscovery = async (
   onRobotFound: (robot: DiscoveredRobotInfo) => void
 ): Promise<() => void> => {
-const scanner = new UDPScanner();
+
  onRobotFound(MOCK_ROBOTS[0])
       onRobotFound(MOCK_ROBOTS[1])
       return () => {
-    scanner.stop();
-  };
+    () => {console.log("Mock tarama durduruldu.");};
+  }; 
+
+  
 
 /*
 if (Platform.OS === 'web') {
