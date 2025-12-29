@@ -11,6 +11,8 @@ interface RosContextType {
   disconnect: () => void;
   ros: any;
   sendMessage: (topicName: string, messageType: string, payload: any) => void;
+  getMessage: (topicName: string, messageType: string, callback: (msg: any) => void) => void;
+  callService: (serviceName: string, serviceType: string, args: any) => Promise<any>;
 }
 
 const RosContext = createContext<RosContextType | undefined>(undefined);
@@ -110,8 +112,71 @@ export const RosProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
+
+  const getMessage = (topicName: string, messageType: string, callback: (msg: any) => void) => {
+    if (!rosRef.current || !isConnected) return;
+    
+    try {
+      const TopicClass = ROSLIB.Topic || (global as any).ROSLIB?.Topic;
+      const MessageClass = ROSLIB.Message || (global as any).ROSLIB?.Message;
+      
+      if (!TopicClass || !MessageClass) {
+
+          console.warn("Topic/Message class could not be found in ROSLIB.");
+          return;
+      }
+      
+      const topic = new TopicClass({
+        ros: rosRef.current,
+        name: topicName,
+        messageType: messageType
+      });
+      
+      topic.subscribe((message: any) => {
+        callback(message);
+      });
+    } catch (err) {
+      console.error("Message receive error:", err);
+    }
+  };
+
+  const callService = (serviceName: string, serviceType: string, args: any): Promise<any> => {
+    return new Promise((resolve, reject) => {
+      if (!rosRef.current || !isConnected) {
+        reject("ROS is not connected");
+        return;
+      }
+      
+      try {
+        const ServiceClass = ROSLIB.Service || (global as any).ROSLIB?.Service;
+        const ServiceRequestClass = ROSLIB.ServiceRequest || (global as any).ROSLIB?.ServiceRequest;
+        
+        if (!ServiceClass || !ServiceRequestClass) {
+            reject("Service/ServiceRequest class could not be found in ROSLIB.");
+            return;
+        }
+        
+        const service = new ServiceClass({
+          ros: rosRef.current,
+          name: serviceName,
+          serviceType: serviceType
+        });
+        
+        const request = new ServiceRequestClass(args);
+        
+        service.callService(request, (result: any) => {
+          resolve(result);
+        }, (error: any) => {
+          reject(error);
+        });
+      } catch (err) {
+        reject(err);
+      }
+    });
+  }
+
   return (
-    <RosContext.Provider value={{ isConnected, connect, disconnect, ros: rosRef.current, sendMessage }}>
+    <RosContext.Provider value={{ isConnected, connect, disconnect, ros: rosRef.current, sendMessage, getMessage, callService }}>
       {children}
     </RosContext.Provider>
   );

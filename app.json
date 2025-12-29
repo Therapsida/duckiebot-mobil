@@ -21,7 +21,12 @@
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "package": "com.anonymous.Ducktor"
+      "package": "com.anonymous.Ducktor",
+      "permissions": [
+        "INTERNET",
+        "ACCESS_WIFI_STATE",
+        "CHANGE_WIFI_MULTICAST_STATE" 
+  ]
     },
     "web": {
       "output": "static",
@@ -46,5 +51,8 @@
       "typedRoutes": true,
       "reactCompiler": true
     }
+    
   }
+
+  
 }

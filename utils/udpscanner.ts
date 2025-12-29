@@ -19,7 +19,7 @@ export interface DiscoveredRobotInfo {
 }
 
 const MOCK_ROBOTS: DiscoveredRobotInfo[] = [
-  { ip: '192.168.43.64', name: 'yakisikli', type: 'Duckiebot', configuration: 'DB21M', hardware: 'Raspberry Pi 4' },
+  { ip: '172.20.10.3', name: 'yakisikli', type: 'Duckiebot', configuration: 'DB21M', hardware: 'Raspberry Pi 4' },
   { ip: '192.168.1.106', name: 'duckiebot-test-2', type: 'Watchtower', configuration: 'WT18', hardware: 'Raspberry Pi 3B+' },
 ];
 
@@ -114,6 +114,7 @@ export class UDPScanner {
         targets.push(`${prefix}.${i}`);
       }
       return targets;
+      
 
     } catch (e) {
       console.error("Failed to get IP:", e);
@@ -185,7 +186,7 @@ export class UDPScanner {
         count++;
 
         // Small pause every 10 packets to avoid flooding the network
-        if (count % 10 === 0) {
+        if (count % 2 === 0) {
            await new Promise(r => setTimeout(r, 2));
         }
       }
@@ -217,9 +218,9 @@ export const startDuckiebotDiscovery = async (
   }
 
   const scanner = new UDPScanner();
-  
-  onRobotFound(MOCK_ROBOTS[0]);
-  onRobotFound(MOCK_ROBOTS[1]);
+
+  // onRobotFound(MOCK_ROBOTS[0]);
+  //onRobotFound(MOCK_ROBOTS[1]);
 
   scanner.scan(onRobotFound).then(() => {
       console.log("Scan routine finished.");

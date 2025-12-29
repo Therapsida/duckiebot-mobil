@@ -1,14 +1,14 @@
 import { useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Button, Text, View } from 'react-native';
-import { useDiscoveredDuckiebotInfo } from '../../context/DuckiebotContext';
-import { useRos } from '../../context/RosContext';
+import { useDiscoveredDuckiebotInfo } from '../../../../context/DuckiebotContext';
+import { useRos } from '../../../../context/RosContext';
 
 export default function DetailScreen() {
   const { id } = useLocalSearchParams(); 
   
   const { data: robotList } = useDiscoveredDuckiebotInfo();
-  const { connect, disconnect, isConnected, sendMessage } = useRos();
+  const { connect, disconnect, isConnected, sendMessage, callService } = useRos();
 
   const [currentRobot, setCurrentRobot] = useState<any>(null);
 
@@ -55,17 +55,15 @@ export default function DetailScreen() {
 
       
       <Button 
-        title="Move Forward" 
+        title="Start Lane Following" 
         disabled={!isConnected}
         onPress={() => {
-
-          sendMessage(
-             `/${currentRobot.name}/wheels_driver_node/wheels_cmd`, 
-             'duckietown_msgs/WheelsCmdStamped',
+          console.log("Starting lane following", currentRobot.name);
+          callService(
+             `/${currentRobot.name}/fsm_node/set_state`, 
+             'duckietown_msgs/SetFSMState',
              {
-               header: { seq: 0, stamp: { secs: 0, nsecs: 0 }, frame_id: '' },
-               vel_left: 0.4,
-               vel_right: 0.4
+                "state": "LANE_FOLLOWING"   
              }
           );
         }}
@@ -78,10 +76,12 @@ export default function DetailScreen() {
         color="red"
         disabled={!isConnected}
         onPress={() => {
-          sendMessage(
-             `/${currentRobot.name}/wheels_driver_node/wheels_cmd`, 
-             'duckietown_msgs/WheelsCmdStamped',
-             { header: { seq: 0, stamp: { secs: 0, nsecs: 0 }, frame_id: '' }, vel_left: 0, vel_right: 0 }
+          callService(
+             `/${currentRobot.name}/fsm_node/set_state`, 
+             'duckietown_msgs/SetFSMState',
+             {
+                "state": "NORMAL_JOYSTICK_CONTROL"   
+             }
           );
         }}
       />
