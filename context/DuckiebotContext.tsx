@@ -1,6 +1,4 @@
-// context/ListContext.tsx
 import React, { createContext, useContext, useEffect, useState } from 'react';
-// Yeni yazdığımız dosyayı import et
 import { DiscoveredRobotInfo, startDuckiebotDiscovery } from '../utils/udpscanner';
 
 interface ListContextType {
@@ -17,28 +15,22 @@ export const DuckiebotProvider = ({ children }: { children: React.ReactNode }) =
 
   const startScan = async () => {
     setIsLoading(true);
-    // Önceki listeyi temizle (isteğe bağlı)
-    // setData([]); 
-
+    setData([]);
     const stopScan = await startDuckiebotDiscovery((newRobot) => {
       setData((prev) => {
-        // Çift kaydı engelle
         if (prev.find(r => r.ip === newRobot.ip)) return prev;
         return [...prev, newRobot];
       });
     });
     
-    // Yüklenme ikonunu 3 sn sonra kapat (veya tarama bitince)
     setTimeout(() => setIsLoading(false), 3000);
 
-    // Cleanup fonksiyonu döndür
     return stopScan;
   };
 
   useEffect(() => {
     let stopFn: (() => void) | undefined;
     
-    // Sayfa açılınca taramayı başlat
     startScan().then(fn => { stopFn = fn; });
 
     return () => {

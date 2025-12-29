@@ -1,20 +1,18 @@
 
-// components/RobotCard.tsx
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-// Tip dosyanı import et (yolunu kendine göre ayarla)
 
 export interface DiscoveredRobotInfo {
-  ip: string;            // addr[0]
-  name: string;          // packet.name
-  type: string;          // packet.type (örn: "duckiebot")
-  configuration: string; // packet.configuration (örn: "DB21")
-  hardware: string;      // packet.hardware
+  ip: string;            
+  name: string;          
+  type: string;          
+  configuration: string;
+  hardware: string;      
 }
 
 interface DuckiebotCardsProps {
   item: DiscoveredRobotInfo;
-  onPress: () => void; // Tıklanınca ne olacağını dışarıdan alacağız
+  onPress: () => void; 
 }
 
 export const DuckiebotCards = ({ item, onPress }: DuckiebotCardsProps) => {
@@ -33,7 +31,7 @@ export const DuckiebotCards = ({ item, onPress }: DuckiebotCardsProps) => {
       </View>
 
       <View style={styles.infoRow}>
-        <Text style={styles.label}>Donanım:</Text>
+        <Text style={styles.label}>Hardware:</Text>
         <Text style={styles.value}>{item.hardware}</Text>
       </View>
     </TouchableOpacity>
@@ -46,13 +44,13 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 16,
     marginBottom: 12, 
-    gap: 12, // Kartlar arası boşluk (veya FlatList gap kullanılabilir)
-    // Gölge Efektleri (Shadow) - Kart hissi verir
+    gap: 12, 
+  
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
-    elevation: 3, // Android için gölge
+    elevation: 3, 
     borderWidth: 1,
     borderColor: '#eee',
   },

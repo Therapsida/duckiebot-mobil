@@ -1,12 +1,13 @@
 import { Buffer } from 'buffer';
 import * as Network from 'expo-network';
+import { Platform } from 'react-native';
 import dgram from 'react-native-udp';
 
-// React Native'de Buffer'ı global yapmak zorundayız
+// We must make Buffer global in React Native
 global.Buffer = global.Buffer || Buffer;
 
 // --- Constants ---
-const REMOTE_PORT = 11411; // Duckiebot'un dinlediği port
+const REMOTE_PORT = 11411; // Port Duckiebot listens on
 
 // --- Interfaces & Types ---
 export interface DiscoveredRobotInfo {
@@ -18,7 +19,7 @@ export interface DiscoveredRobotInfo {
 }
 
 const MOCK_ROBOTS: DiscoveredRobotInfo[] = [
-  { ip: '172.17.0.2', name: 'yunus', type: 'Duckiebot', configuration: 'DB21M', hardware: 'Raspberry Pi 4' },
+  { ip: '192.168.43.64', name: 'yakisikli', type: 'Duckiebot', configuration: 'DB21M', hardware: 'Raspberry Pi 4' },
   { ip: '192.168.1.106', name: 'duckiebot-test-2', type: 'Watchtower', configuration: 'WT18', hardware: 'Raspberry Pi 3B+' },
 ];
 
@@ -38,7 +39,7 @@ interface PongData extends PacketData {
   hardware: string;
 }
 
-// --- Packet Classes (Mantık Aynen Korundu) ---
+
 
 class Packet {
   version: string;
@@ -78,10 +79,9 @@ class PingPacket extends Packet {
   }
 }
 
-// --- Main Scanner Class ---
 
 export class UDPScanner {
-  private socket: any; // dgram tipi RN'de bazen typescript hatası verebilir, any güvenlidir
+  private socket: any; 
   private port: number = 0;
   private stopped: boolean = false;
 
@@ -95,44 +95,38 @@ export class UDPScanner {
       this.socket.close();
       console.log("Scanner socket closed.");
     } catch (e) {
-      // Socket zaten kapalı olabilir
+     
     }
   }
 
-  // --- IP Üretme Mantığı (Mobile Uyarlanmış) ---
-  // Node.js'deki os.networkInterfaces yerine telefonun IP'sini alıp subnet'i tahmin ediyoruz.
   private async generateTargetIps(): Promise<string[]> {
     try {
       const ip = await Network.getIpAddressAsync();
-      console.log(`Cihaz IP: ${ip}`);
+      console.log(`Device IP: ${ip}`);
 
       if (!ip || ip === '0.0.0.0') return [];
 
-      // Basit varsayım: /24 subnet (Class C) tarıyoruz.
-      // Örn: IP 192.168.1.35 ise -> 192.168.1.1'den 192.168.1.254'e kadar
       const parts = ip.split('.');
       const prefix = parts.slice(0, 3).join('.');
       
       const targets: string[] = [];
       for (let i = 1; i < 255; i++) {
-        // Kendi IP'mizi atlayabiliriz ama Duckiebot simülasyonu kendimizdeyse gerekebilir.
         targets.push(`${prefix}.${i}`);
       }
       return targets;
 
     } catch (e) {
-      console.error("IP alınamadı:", e);
+      console.error("Failed to get IP:", e);
       return [];
     }
   }
 
   private async sendPing(host: string): Promise<void> {
     return new Promise((resolve) => {
-      // Senin PingPacket yapını kullanıyoruz
       const ping = new PingPacket('1', this.port);
       const message = ping.serialize();
       
-      // react-native-udp send formatı: msg, offset, length, port, host, callback
+      // react-native-udp send format: msg, offset, length, port, host, callback
       this.socket.send(message, 0, message.length, REMOTE_PORT, host, (err: any) => {
         if (err) {
             // console.warn(`Send error to ${host}:`, err);
@@ -145,17 +139,15 @@ export class UDPScanner {
   public async scan(onFound: (robot: DiscoveredRobotInfo) => void): Promise<void> {
     return new Promise<void>(async (resolve) => {
       
-      // 1. Dinleyiciyi Kur
+     
       this.socket.on('message', (msg: any, rinfo: any) => {
         if (this.stopped) return;
         try {
-          // Gelen mesaj Buffer array gelir, string'e veya Buffer'a çevir
+          
           const bufferMsg = Buffer.from(msg); 
           
-          // Senin PongPacket deserializer'ını kullanıyoruz
+        
           const pong = Packet.deserialize<PongData>(bufferMsg);
-          
-        //   console.log(`Robot bulundu: ${rinfo.address}`);
           
           onFound({
             ip: rinfo.address,
@@ -166,27 +158,25 @@ export class UDPScanner {
           });
 
         } catch (e) {
-        //   console.warn(`Geçersiz paket (${rinfo.address}):`, e);
+          console.warn(`Invalid packet (${rinfo.address}):`, e);
         }
       });
 
       this.socket.on('error', (err: any) => {
-        console.log('Socket Hatası:', err);
+        console.log('Socket error:', err);
         this.stop();
       });
 
-      // 2. Soketi Bağla (Bind)
-      // Port 0 verince rastgele boş bir port seçer (Ephemeral Port)
+  
       this.socket.bind(44444); 
       this.port = 44444; 
       
       console.log(`Scanner listening on port ${this.port}`);
 
-      // 3. Hedefleri Belirle
-      const targetIps = await this.generateTargetIps();
-      console.log(`${targetIps.length} adet IP taranacak...`);
 
-      // 4. Taramayı Başlat
+      const targetIps = await this.generateTargetIps();
+      console.log(`${targetIps.length} IPs will be scanned...`);
+
       let count = 0;
       for (const ip of targetIps) {
         if (this.stopped) break;
@@ -194,15 +184,15 @@ export class UDPScanner {
         await this.sendPing(ip);
         count++;
 
-        // Ağ trafiğini boğmamak için her 10 pakette bir minik bekleme
+        // Small pause every 10 packets to avoid flooding the network
         if (count % 10 === 0) {
            await new Promise(r => setTimeout(r, 2));
         }
       }
 
-      console.log("Ping paketi gönderimi bitti, cevaplar bekleniyor...");
+      console.log("Ping sending finished, waiting for replies...");
       
-      // Cevapların gelmesi için 2 saniye bekle
+      // Wait a moment for responses
       if (!this.stopped) {
         await new Promise(r => setTimeout(r, 2000));
       }
@@ -212,42 +202,31 @@ export class UDPScanner {
   }
 }
 
-// --- Usage Wrapper (Bunu React Component'inden çağıracaksın) ---
-
 export const startDuckiebotDiscovery = async (
   onRobotFound: (robot: DiscoveredRobotInfo) => void
 ): Promise<() => void> => {
 
- onRobotFound(MOCK_ROBOTS[0])
-      onRobotFound(MOCK_ROBOTS[1])
-      return () => {
-    () => {console.log("Mock tarama durduruldu.");};
-  }; 
 
-  
 
-/*
-if (Platform.OS === 'web') {
-      console.log("Web ortamı algılandı: Mock (Sahte) veri kullanılıyor...");
-      onRobotFound(MOCK_ROBOTS[0])
-      onRobotFound(MOCK_ROBOTS[1])
-      return () => {
-    scanner.stop();
-  };
-}
+  if (Platform.OS === 'web') {
+      console.log("Web environment detected: using mock data...");
+      onRobotFound(MOCK_ROBOTS[0]);
+      onRobotFound(MOCK_ROBOTS[1]);
+      // Return a no-op stop function for web
+      return () => {};
+  }
 
   const scanner = new UDPScanner();
   
-  // Asenkron olarak taramayı başlat (await kullanmıyoruz ki UI donmasın)
+  onRobotFound(MOCK_ROBOTS[0]);
+  onRobotFound(MOCK_ROBOTS[1]);
+
   scanner.scan(onRobotFound).then(() => {
       console.log("Scan routine finished.");
-      // Otomatik kapatmak istersen burayı aç:
-      // scanner.stop(); 
   });
 
-  // Geriye durdurma fonksiyonu döndür (useEffect cleanup için)
   return () => {
     scanner.stop();
   };
-  */
+  
 };

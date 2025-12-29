@@ -2,11 +2,9 @@ import { Button, StyleSheet } from 'react-native';
 
 import { ThemedView } from '@/components/themed-view';
 
-// app/index.tsx
 import { useRouter } from 'expo-router';
 import React from 'react';
 import { FlatList, Text, View } from 'react-native';
-// Context'ini import et (ismini DuckiebotContext yaptıysan onu kullan)
 import { DuckiebotCards } from '../components/DuckiebotCards';
 import { useDiscoveredDuckiebotInfo } from '../context/DuckiebotContext';
 
@@ -16,7 +14,7 @@ export default function HomeScreen() {
 
   return (
     <ThemedView style={styles.container}>
-      {data?.length > 0 && <Text style={styles.pageTitle}> Bulunan Robotlar</Text>}
+      {data?.length > 0 && <Text style={styles.pageTitle}>Found Duckiebots</Text>}
 
       <FlatList
         style={styles.flatlist}
@@ -59,8 +57,8 @@ const styles = StyleSheet.create({
     color: '#333',
     fontSize: 24,
     fontWeight: 'bold',
-    margin: 20,
-    marginBottom: 10,
+    margin: 50,
+    marginBottom: 20,
   },
   listContent: {
     flexGrow: 1,

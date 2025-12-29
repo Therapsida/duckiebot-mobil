@@ -5,10 +5,8 @@ import { useDiscoveredDuckiebotInfo } from '../../context/DuckiebotContext';
 import { useRos } from '../../context/RosContext';
 
 export default function DetailScreen() {
-  // 1. URL'deki parametreyi al (dosya adı [id].tsx olduğu için 'id' gelir)
   const { id } = useLocalSearchParams(); 
   
-  // 2. Contextlerden veriyi çek
   const { data: robotList } = useDiscoveredDuckiebotInfo();
   const { connect, disconnect, isConnected, sendMessage } = useRos();
 
@@ -16,23 +14,21 @@ export default function DetailScreen() {
 
   useEffect(() => {
     const foundRobot = robotList.find(r => r.name === id);
-    
+    console.log("Duckiebot found:", foundRobot);
     if (foundRobot) {
       setCurrentRobot(foundRobot);
-      // 3. Robot bulunduysa, IP adresine bağlan!
       connect(foundRobot.ip);
     }
     
-    // Sayfadan çıkınca bağlantıyı kes
     return () => {
       disconnect();
     };
-  }, [id, robotList]); // ID değişirse tekrar çalış
+  }, [id, robotList]);
 
   if (!currentRobot) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <Text>Robot bulunamadı veya liste boş.</Text>
+        <Text>Duckiebot Could Not Be Found</Text>
       </View>
     );
   }
@@ -44,26 +40,25 @@ export default function DetailScreen() {
         IP: {currentRobot.ip}
       </Text>
 
-      {/* Bağlantı Durumu */}
       <View style={{ marginBottom: 30 }}>
         {isConnected ? (
           <Text style={{ color: 'green', fontSize: 18, fontWeight: 'bold' }}>
-            ✅ ROS Bağlı
+            ROS MASTER IS CONNECTED
           </Text>
         ) : (
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
             <ActivityIndicator size="small" color="#0000ff" />
-            <Text style={{ marginLeft: 10 }}>Bağlanıyor...</Text>
+            <Text style={{ marginLeft: 10 }}>Connecting...</Text>
           </View>
         )}
       </View>
 
-      {/* Kontrol Butonları */}
+      
       <Button 
-        title="İleri Sür" 
-        disabled={!isConnected} // Bağlı değilse basamasın
+        title="Move Forward" 
+        disabled={!isConnected}
         onPress={() => {
-          // Örnek Hız Komutu
+
           sendMessage(
              `/${currentRobot.name}/wheels_driver_node/wheels_cmd`, 
              'duckietown_msgs/WheelsCmdStamped',
@@ -79,7 +74,7 @@ export default function DetailScreen() {
       <View style={{ height: 20 }} />
 
       <Button 
-        title="Dur" 
+        title="Stop!" 
         color="red"
         disabled={!isConnected}
         onPress={() => {
