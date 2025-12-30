@@ -14,7 +14,6 @@ export default function DetailScreen() {
 
   useEffect(() => {
     const foundRobot = robotList.find(r => r.name === id);
-    console.log("Duckiebot found:", foundRobot);
     if (foundRobot) {
       setCurrentRobot(foundRobot);
       connect(foundRobot.ip);

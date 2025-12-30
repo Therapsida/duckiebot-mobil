@@ -1,5 +1,6 @@
+import { mdnsDiscovery } from '@/utils/mdns';
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { DiscoveredRobotInfo, startDuckiebotDiscovery } from '../utils/udpscanner';
+import { DiscoveredRobotInfo } from '../utils/mdns';
 
 interface ListContextType {
   data: DiscoveredRobotInfo[];
@@ -16,7 +17,7 @@ export const DuckiebotProvider = ({ children }: { children: React.ReactNode }) =
   const startScan = async () => {
     setIsLoading(true);
     setData([]);
-    const stopScan = await startDuckiebotDiscovery((newRobot) => {
+    const stopScan = await mdnsDiscovery.start((newRobot) => {
       setData((prev) => {
         if (prev.find(r => r.ip === newRobot.ip)) return prev;
         return [...prev, newRobot];

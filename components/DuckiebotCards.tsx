@@ -1,14 +1,9 @@
 
+import { DiscoveredRobotInfo } from '@/utils/mdns';
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
-export interface DiscoveredRobotInfo {
-  ip: string;            
-  name: string;          
-  type: string;          
-  configuration: string;
-  hardware: string;      
-}
+
 
 interface DuckiebotCardsProps {
   item: DiscoveredRobotInfo;
@@ -31,8 +26,8 @@ export const DuckiebotCards = ({ item, onPress }: DuckiebotCardsProps) => {
       </View>
 
       <View style={styles.infoRow}>
-        <Text style={styles.label}>Hardware:</Text>
-        <Text style={styles.value}>{item.hardware}</Text>
+        <Text style={styles.label}>Configuration: </Text>
+        <Text style={styles.value}>{item.configuration}</Text>
       </View>
     </TouchableOpacity>
   );

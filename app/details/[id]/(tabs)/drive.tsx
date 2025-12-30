@@ -9,8 +9,6 @@ interface VideoStreamProps {
   robotName?: string;
 }
 
-// WebView içinde çalışacak basit HTML. 
-// Sadece bir resim etiketi var.
 const HTML_CONTENT = `
 <!DOCTYPE html>
 <html>
