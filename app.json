@@ -33,20 +33,49 @@
       "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
-      "expo-router",
-      [
-        "expo-splash-screen",
-        {
-          "image": "./assets/images/splash-icon.png",
-          "imageWidth": 200,
-          "resizeMode": "contain",
-          "backgroundColor": "#ffffff",
-          "dark": {
-            "backgroundColor": "#000000"
+  "expo-router",
+  [
+    "expo-splash-screen",
+    {
+      "image": "./assets/images/splash-icon.png",
+      "imageWidth": 200,
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff",
+      "dark": {
+        "backgroundColor": "#000000"
+      }
+    }
+  ],
+  [ 
+    "expo-font",
+    {
+      "fonts": [
+        "./assets/fonts/Silkscreen-Regular.ttf",
+        "./assets/fonts/Silkscreen-Bold.ttf"
+      ],
+      "android": {
+        "fonts": [
+          {
+            "fontFamily": "Silkscreen",
+            "fontDefinitions": [
+              {
+                "path": "./assets/fonts/Silkscreen-Regular.ttf",
+                "weight": 400
+              },
+              {
+                "path": "./assets/fonts/Silkscreen-Bold.ttf",
+                "weight": 700
+              }
+            ]
           }
-        }
-      ]
-    ],
+        ]
+      },
+      "ios": {
+        "fonts": ["./assets/fonts/Silkscreen-Regular.ttf", "./assets/fonts/Silkscreen-Bold.ttf"]
+      }
+    }
+  ] 
+],
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true

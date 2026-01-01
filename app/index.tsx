@@ -1,87 +1,71 @@
-import { Button, StyleSheet } from 'react-native';
-
-import { ThemedView } from '@/components/themed-view';
-
 import { useRouter } from 'expo-router';
 import React from 'react';
-import { FlatList, Text, View } from 'react-native';
+import { FlatList } from 'react-native';
+import { Button, Spinner, Text, View, YStack } from 'tamagui';
 import { DuckiebotCards } from '../components/DuckiebotCards';
 import { useDiscoveredDuckiebotInfo } from '../context/DuckiebotContext';
 
 export default function HomeScreen() {
-  const { data, refreshData, isLoading} = useDiscoveredDuckiebotInfo();
+  const { data, refreshData, isLoading } = useDiscoveredDuckiebotInfo();
   const router = useRouter();
 
   return (
-    <ThemedView style={styles.container}>
-      {data?.length > 0 && <Text style={styles.pageTitle}>Found Duckiebots</Text>}
+    <YStack flex={1} backgroundColor="$background" padding="$4">
+      
+      {/* Başlık */}
+      {data?.length > 0 && (
+        <Text 
+          fontFamily="$heading" 
+          fontSize="$6"        
+          color="$color"        
+          textAlign="center"
+          marginBottom="$10"
+          marginTop="$5"
+
+        >
+          Found Duckiebots
+        </Text>
+      )}
 
       <FlatList
-        style={styles.flatlist}
         data={data}
         keyExtractor={(item) => item.ip}
-        contentContainerStyle={styles.listContent}
         
-    
+        contentContainerStyle={{ flexGrow: 1, justifyContent: data?.length ? 'flex-start' : 'center' }}
+        
         ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>
+          <YStack flex={1} justifyContent="center" alignItems="center" space="$4">
+            
+            <Text fontFamily="$body" fontSize="$5" color="$color">
               {isLoading ? 'Searching...' : 'No duckiebots found.'}
             </Text>
-            <View style={styles.searchButton}>
-              <Button disabled={isLoading} onPress={refreshData} title="Search Duckiebots" />
-            </View>
-          </View>
+
+            <Button
+              size="$4"
+              backgroundColor="$color"
+              disabled={isLoading}
+              onPress={refreshData}
+              opacity={isLoading ? 0.7 : 1}
+              icon={isLoading ? <Spinner color="$background" /> : undefined}
+            >
+              <Text color="$background" fontFamily="$body">
+                Search Duckiebots
+              </Text>
+            </Button>
+          </YStack>
         }
 
-    
         renderItem={({ item }) => (
-          <DuckiebotCards 
-            item={item} 
-            onPress={() => {
-              router.push({ pathname: '/details/[id]', params: { id: item.name } });
-            }} 
-          />
+          <View marginBottom="$3">
+            <DuckiebotCards
+              item={item}
+              onPress={() => {
+                router.push({ pathname: '/details/[id]', params: { id: item.name } });
+              }}
+            />
+          </View>
         )}
       />
-    </ThemedView>
+    </YStack>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f8f9fa', 
-  },
-  pageTitle: {
-    color: '#333',
-    fontSize: 24,
-    fontWeight: 'bold',
-    margin: 50,
-    marginBottom: 20,
-  },
-  listContent: {
-    flexGrow: 1,
-    padding: 20,
-    paddingTop: 10,
-    width: '100%',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingVertical: 24,
-  },
-  emptyText: {
-    color: '#999',
-    fontSize: 16,
-  },
-  flatlist: {
-    flex: 1,
-  },
-  searchButton: {
-    marginTop: 16,
-  },
-})

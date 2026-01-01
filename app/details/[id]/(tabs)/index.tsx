@@ -1,90 +1,135 @@
-import { useLocalSearchParams } from 'expo-router';
-import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Button, Text, View } from 'react-native';
-import { useDiscoveredDuckiebotInfo } from '../../../../context/DuckiebotContext';
-import { useRos } from '../../../../context/RosContext';
+import { useActiveDuckiebot } from '@/context/ActiveDuckiebotContext';
+import React from 'react';
+import { Button, Image, Spinner, Text, XStack, YStack } from 'tamagui';
 
-export default function DetailScreen() {
-  const { id } = useLocalSearchParams(); 
-  
-  const { data: robotList } = useDiscoveredDuckiebotInfo();
-  const { connect, disconnect, isConnected, sendMessage, callService } = useRos();
+export default function HomeScreen() {
+  const { duckiebot, connectionStatus, serviceCall, retryConnection } = useActiveDuckiebot();
 
-  const [currentRobot, setCurrentRobot] = useState<any>(null);
+   const renderStatus = () => {
+    switch (connectionStatus) {
+      case 'connected':
+        return (
+          <YStack alignItems="center" space="$2">
+            <Text 
+              color="$green10" 
+              fontFamily="$heading" 
+              fontSize="$5" 
+              textAlign="center"
+            >
+              ROS MASTER IS CONNECTED
+            </Text>
+            <Text fontSize="$2" opacity={0.6}>Ready to drive!</Text>
+          </YStack>
+        );
 
-  useEffect(() => {
-    const foundRobot = robotList.find(r => r.name === id);
-    console.log("Duckiebot found:", foundRobot);
-    if (foundRobot) {
-      setCurrentRobot(foundRobot);
-      connect(foundRobot.ip);
+      case 'searching':
+      case 'connecting':
+        return (
+          <XStack alignItems="center" space="$3">
+            <Spinner size="large" color="$color" />
+            <Text fontFamily="$body" fontSize="$4" color="$color">
+              {connectionStatus === 'searching' ? 'Searching...' : 'Connecting...'}
+            </Text>
+          </XStack>
+        );
+
+      case 'failed':
+        return (
+          <YStack alignItems="center" space="$3">
+            <Text color="$red10" fontFamily="$heading" fontSize="$4">
+              CONNECTION FAILED
+            </Text>
+            <Button size="$3" onPress={retryConnection} theme="red">
+              Retry
+            </Button>
+          </YStack>
+        );
+
+      case 'idle':
+      default:
+        return (
+          <Text fontFamily="$body" color="$gray10">
+            Waiting for status...
+          </Text>
+        );
     }
-    
-    return () => {
-      disconnect();
-    };
-  }, [id, robotList]);
-
-  if (!currentRobot) {
-    return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <Text>Duckiebot Could Not Be Found</Text>
-      </View>
-    );
-  }
+  };
 
   return (
-    <View style={{ flex: 1, padding: 20, alignItems: 'center', justifyContent: 'center' }}>
-      <Text style={{ fontSize: 24, fontWeight: 'bold' }}>{currentRobot.name}</Text>
-      <Text style={{ fontSize: 16, color: '#666', marginBottom: 20 }}>
-        IP: {currentRobot.ip}
-      </Text>
 
-      <View style={{ marginBottom: 30 }}>
-        {isConnected ? (
-          <Text style={{ color: 'green', fontSize: 18, fontWeight: 'bold' }}>
-            ROS MASTER IS CONNECTED
+    <YStack flex={1} backgroundColor="$background" padding="$4" justifyContent="center" alignItems="center">
+      
+    <YStack marginBottom="$8" alignItems="center">
+      <Image
+      source={require('../../../../assets/images/duckietownTown.png')} 
+      width={150}
+      height={150}
+      marginBottom="$4" 
+    />
+    <Text 
+      fontFamily="$heading" 
+      fontSize="$8" 
+      color="$color" 
+      textAlign="center" 
+      marginBottom="$2"
+  
+      textShadowColor="rgba(0,0,0,0.2)"
+      textShadowOffset={{ width: 1, height: 1 }}
+      textShadowRadius={1}
+    >
+      WELCOME TO
+    </Text>
+
+    <Text 
+      fontFamily="$heading" 
+      fontSize="$9" 
+      color="white"
+      textAlign="center"
+       textShadowColor="rgba(0,0,0,0.2)"
+      textShadowOffset={{ width: 3, height: 3 }}
+      textShadowRadius={1}
+    >
+      DUCKIETOWN
+    </Text>
+
+  </YStack>
+
+      
+      <YStack 
+        backgroundColor="rgba(255,255,255, 0.9)" 
+        padding="$5" 
+        borderRadius="$4" 
+        width="100%" 
+        maxWidth={400}
+        borderWidth={2}
+        borderColor="$color"
+        elevation="$4"
+        alignItems="center"
+        space="$4"
+      >
+        <YStack alignItems="center">
+          <Text fontFamily="$heading" fontSize="$5" color="$color">
+            {duckiebot?.name || "Unknown Bot"}
           </Text>
-        ) : (
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <ActivityIndicator size="small" color="#0000ff" />
-            <Text style={{ marginLeft: 10 }}>Connecting...</Text>
-          </View>
-        )}
-      </View>
+          <Text fontFamily="$body" fontSize="$3" color="$gray10">
+            IP: {duckiebot?.ip || "0.0.0.0"}
+          </Text>
+        </YStack>
 
       
-      <Button 
-        title="Start Lane Following" 
-        disabled={!isConnected}
-        onPress={() => {
-          console.log("Starting lane following", currentRobot.name);
-          callService(
-             `/${currentRobot.name}/fsm_node/set_state`, 
-             'duckietown_msgs/SetFSMState',
-             {
-                "state": "LANE_FOLLOWING"   
-             }
-          );
-        }}
-      />
-      
-      <View style={{ height: 20 }} />
+        <YStack 
+          padding="$4" 
+          backgroundColor="$background" 
+          borderRadius="$3"
+          width="100%"
+          alignItems="center"
+          borderWidth={1}
+          borderColor="rgba(0,0,0,0.1)"
+        >
+          {renderStatus()}
+        </YStack>
+      </YStack>
 
-      <Button 
-        title="Stop!" 
-        color="red"
-        disabled={!isConnected}
-        onPress={() => {
-          callService(
-             `/${currentRobot.name}/fsm_node/set_state`, 
-             'duckietown_msgs/SetFSMState',
-             {
-                "state": "NORMAL_JOYSTICK_CONTROL"   
-             }
-          );
-        }}
-      />
-    </View>
+    </YStack>
   );
 }

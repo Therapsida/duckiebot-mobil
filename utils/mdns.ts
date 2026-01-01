@@ -7,6 +7,11 @@ export interface DiscoveredRobotInfo {
   configuration: string;
 }
 
+
+
+
+
+
 export type MdnsCallback = (service: DiscoveredRobotInfo) => void;
 
 class MdnsDiscoveryService {

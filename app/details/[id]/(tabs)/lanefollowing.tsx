@@ -1,42 +1,19 @@
-import { useLocalSearchParams } from 'expo-router';
-import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Button, Text, View } from 'react-native';
-import { useDiscoveredDuckiebotInfo } from '../../../../context/DuckiebotContext';
-import { useRos } from '../../../../context/RosContext';
+import { ButtonDuckie } from '@/components/ButtonDuckie';
+import { useActiveDuckiebot } from '@/context/ActiveDuckiebotContext';
+import React from 'react';
+import { ActivityIndicator } from 'react-native';
+import { Text, View } from 'tamagui';
 
-export default function DetailScreen() {
-  const { id } = useLocalSearchParams(); 
-  
-  const { data: robotList } = useDiscoveredDuckiebotInfo();
-  const { connect, disconnect, isConnected, sendMessage } = useRos();
+export default function HomeScreen() {
+  const { duckiebot, connectionStatus, serviceCall } = useActiveDuckiebot();
 
-  const [currentRobot, setCurrentRobot] = useState<any>(null);
-
-  useEffect(() => {
-    const foundRobot = robotList.find(r => r.name === id);
-    if (foundRobot) {
-      setCurrentRobot(foundRobot);
-      connect(foundRobot.ip);
-    }
-    
-    return () => {
-      disconnect();
-    };
-  }, [id, robotList]);
-
-  if (!currentRobot) {
-    return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <Text>Duckiebot Could Not Be Found</Text>
-      </View>
-    );
-  }
+  const isConnected = connectionStatus === 'connected';
 
   return (
     <View style={{ flex: 1, padding: 20, alignItems: 'center', justifyContent: 'center' }}>
-      <Text style={{ fontSize: 24, fontWeight: 'bold' }}>{currentRobot.name}</Text>
+      <Text style={{ fontSize: 24, fontWeight: 'bold' }}>{duckiebot?.name}</Text>
       <Text style={{ fontSize: 16, color: '#666', marginBottom: 20 }}>
-        IP: {currentRobot.ip}
+        IP: {duckiebot?.ip}
       </Text>
 
       <View style={{ marginBottom: 30 }}>
@@ -53,13 +30,13 @@ export default function DetailScreen() {
       </View>
 
       
-      <Button 
-        title="Start Lane Following" 
+      <ButtonDuckie  
+      text=' Start Lane Following'
         disabled={!isConnected}
         onPress={() => {
-
-          sendMessage(
-             `/${currentRobot.name}/fsm_node/set_state`, 
+          console.log("Starting lane following", duckiebot?.name);
+          serviceCall(
+             `/fsm_node/set_state`, 
              'duckietown_msgs/SetFSMState',
              {
                 "state": "LANE_FOLLOWING"   
@@ -67,16 +44,18 @@ export default function DetailScreen() {
           );
         }}
       />
+       
       
       <View style={{ height: 20 }} />
 
-      <Button 
-        title="Stop!" 
-        color="red"
+      <ButtonDuckie 
+        text='Stop!'
+        theme="red"
         disabled={!isConnected}
+        opacity={!isConnected ? 0.5 : 1}
         onPress={() => {
-          sendMessage(
-             `/${currentRobot.name}/fsm_node/set_state`, 
+          serviceCall(
+             `/fsm_node/set_state`, 
              'duckietown_msgs/SetFSMState',
              {
                 "state": "NORMAL_JOYSTICK_CONTROL"   
@@ -84,6 +63,10 @@ export default function DetailScreen() {
           );
         }}
       />
+      
+
+     
+
     </View>
   );
 }

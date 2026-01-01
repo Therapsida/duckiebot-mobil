@@ -1,12 +1,11 @@
-import { useDiscoveredDuckiebotInfo } from '@/context/DuckiebotContext';
-import { useLocalSearchParams } from 'expo-router';
+import { useActiveDuckiebot } from '@/context/ActiveDuckiebotContext';
 import React, { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { WebView } from 'react-native-webview'; // WebView importu
-import { useRos } from '../../../../context/RosContext';
+import { Text } from 'tamagui';
 
 interface VideoStreamProps {
-  robotName?: string;
+  duckiebotName?: string;
 }
 
 const HTML_CONTENT = `
@@ -26,60 +25,54 @@ const HTML_CONTENT = `
 `;
 
 const VideoStream: React.FC<VideoStreamProps> = () => {
-  const { isConnected, getMessage } = useRos();
-  const { id } = useLocalSearchParams(); 
-  const { data: robotList } = useDiscoveredDuckiebotInfo();
-  
-  // WebView referansı
+  const { duckiebot, connectionStatus, serviceCall, subscribe, publish } = useActiveDuckiebot();
   const webViewRef = useRef<WebView>(null);
   const lastUpdate = useRef<number>(0);
   
   const TARGET_FPS = 20;
   const FRAME_INTERVAL = 1000 / TARGET_FPS; 
 
-  const duckiebotName = robotList?.find(r => r.name === id)?.name || 'yakisikli';
+  const [steerValue, setSteerValue] = useState(0);
+
+  const handleSteer = (value: number) => {
+    setSteerValue(value);
+    console.log("Steer Value:", value);
+  };
   
-  // İlk veri geldi mi kontrolü (Loading spinner için)
   const [hasData, setHasData] = useState(false);
+  const isConnected = connectionStatus === 'connected';
 
   useEffect(() => {
-    if (!isConnected || !duckiebotName) return;
-    // object detection nodu /${duckiebotName}/object_detection_node/debug/image/compressed
-    // /${duckiebotName}/camera_node/image/compressed
-    const topicName = `/${duckiebotName}/line_detector_node/debug/maps/compressed`;
+    if (!isConnected || !duckiebot?.name) return;
+    // object detection nodu /${duckiebot.name}/object_detection_node/debug/image/compressed
+    // /${duckiebot.name}/camera_node/image/compressed
+    const topicName = `/line_detector_node/debug/maps/compressed`;
     const messageType = 'sensor_msgs/CompressedImage';
 
-    const unsubscribe = getMessage(topicName, messageType, (message: any) => {
+    const unsubscribe = subscribe(topicName, messageType, (message: any) => {
       const now = Date.now();
       
       if (now - lastUpdate.current > FRAME_INTERVAL) {
         if (!hasData) setHasData(true);
 
-        // KRİTİK NOKTA: State güncellemek yerine doğrudan WebView içindeki JS'i tetikliyoruz.
-        // Bu, React render döngüsüne girmez, titremeyi engeller.
         const base64Str = `data:image/jpeg;base64,${message.data}`;
         const script = `
           var img = document.getElementById('streamImage');
           if (img) img.src = "${base64Str}";
-          true; // İnjeksiyonun başarılı dönmesi için
+          true; 
         `;
         
         webViewRef.current?.injectJavaScript(script);
         lastUpdate.current = now;
       }
     });
-
-    return () => {
-      // unsubscribe();
-    };
-  }, [isConnected, duckiebotName, hasData]);
+  }, [connectionStatus, duckiebot?.name, hasData]);
 
   return (
     <View style={styles.container}>
-      <Text style={styles.label}>Kamera Akışı ({duckiebotName})</Text>
+      <Text style={styles.label}>Camera Feed({duckiebot?.name})</Text>
       
       <View style={styles.frame}>
-        {/* WebView Her zaman render edilir, ancak veri gelene kadar gizli tutulabilir veya siyah görünür */}
         <WebView
             ref={webViewRef}
             originWhitelist={['*']}
@@ -87,21 +80,22 @@ const VideoStream: React.FC<VideoStreamProps> = () => {
             style={{ flex: 1, backgroundColor: 'transparent' }}
             scrollEnabled={false}
             javaScriptEnabled={true}
-            // Android'de transparanlık sorunu olmaması için:
             containerStyle={{backgroundColor: 'black'}} 
         />
         
-        {/* Veri gelmediyse üstte Loading göster */}
+       
         {(!isConnected || !hasData) && (
           <View style={[styles.placeholder, {position: 'absolute', width: '100%', height: '100%', backgroundColor: 'black'}]}>
              {isConnected ? (
               <ActivityIndicator size="large" color="#FFD700" /> 
             ) : (
-              <Text style={styles.infoText}>Robot Bağlı Değil</Text>
+              <Text style={styles.infoText}>Robot is not connected</Text>
             )}
           </View>
         )}
       </View>
+
+      
     </View>
   );
 };
@@ -125,7 +119,7 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: '#444',
     overflow: 'hidden',
-    position: 'relative', // Absolute loading için
+    position: 'relative',
   },
   placeholder: {
     justifyContent: 'center',

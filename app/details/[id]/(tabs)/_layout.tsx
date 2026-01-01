@@ -1,6 +1,6 @@
 // app/details/[id]/_layout.tsx
 import { Ionicons } from '@expo/vector-icons';
-import { DrawerActions, useNavigation } from '@react-navigation/native';
+import { useNavigation } from '@react-navigation/native';
 import { BlurView } from 'expo-blur';
 import { Tabs } from 'expo-router';
 import React from 'react';
@@ -9,8 +9,7 @@ import { StyleSheet } from 'react-native';
 export default function DrawerLayout() {
   const navigation = useNavigation();
 
-  const toggleMenu = () => navigation.dispatch(DrawerActions.toggleDrawer());
-
+  
   return (
     <Tabs
       screenOptions={{
@@ -40,7 +39,7 @@ export default function DrawerLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Ana Sayfa',
+          title: 'Main Page',
           tabBarIcon: ({ color, size, focused }) => (
             <Ionicons 
               name={focused ? 'home' : 'home-outline'} 

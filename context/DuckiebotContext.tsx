@@ -1,6 +1,11 @@
-import { mdnsDiscovery } from '@/utils/mdns';
+import { DiscoveredRobotInfo, mdnsDiscovery } from '@/utils/mdns'; // Importları düzelttim
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { DiscoveredRobotInfo } from '../utils/mdns';
+
+
+const USE_MOCK_DATA = true; // Gerçek keşif yerine sahte verileri kullanmak için
+
+
+
 
 interface ListContextType {
   data: DiscoveredRobotInfo[];
@@ -8,16 +13,44 @@ interface ListContextType {
   isLoading: boolean;
 }
 
+const mockRobots: DiscoveredRobotInfo[] = [
+  {
+    name: "duckiebot-alpha",
+    ip: "192.168.1.45",
+    type: "Duckiebot",
+    configuration: "DB21M"
+  },
+  {
+    name: "duckiebot-beta",
+    ip: "192.168.1.102",
+    type: "Duckiebot",
+    configuration: "DB21M"
+  }
+];
+
+
 const ListContext = createContext<ListContextType | undefined>(undefined);
 
 export const DuckiebotProvider = ({ children }: { children: React.ReactNode }) => {
   const [data, setData] = useState<DiscoveredRobotInfo[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
-  const startScan = async () => {
+  const startScan = () => {
+
+    if(USE_MOCK_DATA) {
+      setIsLoading(true);
+      setData(mockRobots);
+      setTimeout(() => setIsLoading(false), 1000);
+      return;
+    }
+
+
+    mdnsDiscovery.stop();
+
     setIsLoading(true);
     setData([]);
-    const stopScan = await mdnsDiscovery.start((newRobot) => {
+
+    mdnsDiscovery.start((newRobot) => {
       setData((prev) => {
         if (prev.find(r => r.ip === newRobot.ip)) return prev;
         return [...prev, newRobot];
@@ -25,17 +58,12 @@ export const DuckiebotProvider = ({ children }: { children: React.ReactNode }) =
     });
     
     setTimeout(() => setIsLoading(false), 3000);
-
-    return stopScan;
   };
 
   useEffect(() => {
-    let stopFn: (() => void) | undefined;
-    
-    startScan().then(fn => { stopFn = fn; });
-
+    startScan();
     return () => {
-      if (stopFn) stopFn();
+      mdnsDiscovery.stop();
     };
   }, []);
 
