@@ -25,63 +25,69 @@
       "permissions": [
         "INTERNET",
         "ACCESS_WIFI_STATE",
-        "CHANGE_WIFI_MULTICAST_STATE" 
-  ]
+        "CHANGE_WIFI_MULTICAST_STATE"
+      ]
     },
     "web": {
       "output": "static",
       "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
-  "expo-router",
-  [
-    "expo-splash-screen",
-    {
-      "image": "./assets/images/splash-icon.png",
-      "imageWidth": 200,
-      "resizeMode": "contain",
-      "backgroundColor": "#ffffff",
-      "dark": {
-        "backgroundColor": "#000000"
-      }
-    }
-  ],
-  [ 
-    "expo-font",
-    {
-      "fonts": [
-        "./assets/fonts/Silkscreen-Regular.ttf",
-        "./assets/fonts/Silkscreen-Bold.ttf"
+      "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/images/splash-icon.png",
+          "imageWidth": 200,
+          "resizeMode": "contain",
+          "backgroundColor": "#ffffff",
+          "dark": {
+            "backgroundColor": "#000000"
+          }
+        }
       ],
-      "android": {
-        "fonts": [
-          {
-            "fontFamily": "Silkscreen",
-            "fontDefinitions": [
+      [
+        "expo-font",
+        {
+          "fonts": [
+            "./assets/fonts/Silkscreen-Regular.ttf",
+            "./assets/fonts/Silkscreen-Bold.ttf"
+          ],
+          "android": {
+            "fonts": [
               {
-                "path": "./assets/fonts/Silkscreen-Regular.ttf",
-                "weight": 400
-              },
-              {
-                "path": "./assets/fonts/Silkscreen-Bold.ttf",
-                "weight": 700
+                "fontFamily": "Silkscreen",
+                "fontDefinitions": [
+                  {
+                    "path": "./assets/fonts/Silkscreen-Regular.ttf",
+                    "weight": 400
+                  },
+                  {
+                    "path": "./assets/fonts/Silkscreen-Bold.ttf",
+                    "weight": 700
+                  }
+                ]
               }
             ]
+          },
+          "ios": {
+            "fonts": [
+              "./assets/fonts/Silkscreen-Regular.ttf",
+              "./assets/fonts/Silkscreen-Bold.ttf"
+            ]
           }
-        ]
-      },
-      "ios": {
-        "fonts": ["./assets/fonts/Silkscreen-Regular.ttf", "./assets/fonts/Silkscreen-Bold.ttf"]
-      }
-    }
-  ] 
-],
+        }
+      ]
+    ],
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "f84ed7f3-f7cc-47df-81e2-29f90831e38c"
+      }
     }
-    
   }
-
-  
 }
