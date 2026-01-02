@@ -48,25 +48,41 @@ const VideoStream: React.FC<VideoStreamProps> = () => {
   const [hasData, setHasData] = useState(false);
   const isConnected = connectionStatus === 'connected';
 
-  const [steerValue, setSteerValue] = useState<number>(0);
-
+  const steerValue = useSharedValue<number>(0);
+  const throttleValue = useSharedValue<number>(0);
 
   const handleSteer = useCallback((value: number) => {
-    setSteerValue(steerValue)
+    steerValue.value = value
   }, []);
 
   const handleThrottle = useCallback((value: number) => {
-    const val_left = ((1 - steerValue) / 2)*value
-    const val_right = ((1 + steerValue) / 2)*value
+    throttleValue.value = value;
+  }, []);
 
+  useEffect(() => {
+  const timer = setInterval(() => {
+    
+    const speed = throttleValue.value;
+    const steer = steerValue.value;
+
+    const val_left = ((1 - steerValue.value) / 2)*speed
+    const val_right = ((1 + steerValue.value) / 2)*speed
+
+    
+
+    console.log(`Publishing - Left: ${val_left.toFixed(2)}, Right: ${val_right.toFixed(2)}`);
+    
     publish(`/wheels_driver_node/wheels_cmd`, 'duckietown_msgs/WheelsCmdStamped', {
       header: { seq: 0, stamp: { secs: 0, nsecs: 0 }, frame_id: '' },
       vel_left: val_left,
       vel_right: val_right
-      
-    }
-    )
-  }, []);
+    });
+
+  }, 100); 
+
+  
+  return () => clearInterval(timer);
+}, []);
 
 
   const rotation = useSharedValue(0);
