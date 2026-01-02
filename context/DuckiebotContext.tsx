@@ -1,8 +1,8 @@
-import { DiscoveredRobotInfo, mdnsDiscovery } from '@/utils/mdns'; // Importları düzelttim
+import { DiscoveredRobotInfo, mdnsDiscovery } from '@/utils/mdns';
 import React, { createContext, useContext, useEffect, useState } from 'react';
 
 
-const USE_MOCK_DATA = true; // Gerçek keşif yerine sahte verileri kullanmak için
+const USE_MOCK_DATA = false; 
 
 
 
@@ -15,8 +15,8 @@ interface ListContextType {
 
 const mockRobots: DiscoveredRobotInfo[] = [
   {
-    name: "duckiebot-alpha",
-    ip: "192.168.1.45",
+    name: "yakisikli2",
+    ip: "1192.168.43.64",
     type: "Duckiebot",
     configuration: "DB21M"
   },

@@ -12,7 +12,6 @@ import { runOnJS, useSharedValue, withSpring } from 'react-native-reanimated';
 import { WebView } from 'react-native-webview';
 import { Button, Text, YStack } from 'tamagui';
 
-// Ekran boyutlarını al (Hesaplamalar için gerekli)
 const { width, height } = Dimensions.get('window');
 
 interface VideoStreamProps {
@@ -26,7 +25,7 @@ const HTML_CONTENT = `
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <style>
         body { margin: 0; padding: 0; background-color: #000; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; }
-        #streamImage { width: 100%; height: 100%; object-fit: contain; }
+        #streamImage { width: 100%; height: 100%; object-fit: contain;  object-fit: fill;}
     </style>
 </head>
 <body>
@@ -65,12 +64,9 @@ const VideoStream: React.FC<VideoStreamProps> = () => {
     const speed = throttleValue.value;
     const steer = steerValue.value;
 
-    const val_left = ((1 - steerValue.value) / 2)*speed
-    const val_right = ((1 + steerValue.value) / 2)*speed
+    const val_right = ((1 - steerValue.value) / 2)*speed
+    const val_left = ((1 + steerValue.value) / 2)*speed
 
-    
-
-    console.log(`Publishing - Left: ${val_left.toFixed(2)}, Right: ${val_right.toFixed(2)}`);
     
     publish(`/wheels_driver_node/wheels_cmd`, 'duckietown_msgs/WheelsCmdStamped', {
       header: { seq: 0, stamp: { secs: 0, nsecs: 0 }, frame_id: '' },
@@ -137,6 +133,7 @@ const VideoStream: React.FC<VideoStreamProps> = () => {
       }
     })
     .onTouchesMove((e, manager) => {
+      console.log("Throttle move");
       for (const touch of e.changedTouches) {
         const tracker = activeTrackers.value[touch.id];
         if (tracker) {
@@ -156,10 +153,7 @@ const VideoStream: React.FC<VideoStreamProps> = () => {
           if (!isInsideSteering && !isInsideThrottle) {
               continue; 
           }
-
           if (tracker.target === 'throttle') {
-
-           
 
             const deltaY = touch.y - tracker.startY;
             const newY = tracker.startVal + deltaY;
@@ -234,7 +228,7 @@ const VideoStream: React.FC<VideoStreamProps> = () => {
 
   useEffect(() => {
     if (!isConnected || !duckiebot?.name) return;
-    const topicName = `/line_detector_node/debug/maps/compressed`;
+    const topicName = `/camera_node/image/compressed`;
     const messageType = 'sensor_msgs/CompressedImage';
 
     const unsubscribe = subscribe(topicName, messageType, (message: any) => {
@@ -309,7 +303,6 @@ const VideoStream: React.FC<VideoStreamProps> = () => {
               />
             </Animated.View>
 
-            {/* SAĞ: GAZ */}
             <Animated.View style={styles.controlContainer}>
               <ThrottleController 
                 height={220} 
