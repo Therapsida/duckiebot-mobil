@@ -8,7 +8,6 @@ import { useDiscoveredDuckiebotInfo } from '../context/DuckiebotContext';
 export default function HomeScreen() {
   const { data, refreshData, isLoading } = useDiscoveredDuckiebotInfo();
   const router = useRouter();
-
   return (
     <YStack flex={1} backgroundColor="$background" padding="$4">
       
