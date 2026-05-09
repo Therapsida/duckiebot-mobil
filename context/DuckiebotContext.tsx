@@ -1,5 +1,6 @@
 import { DiscoveredRobotInfo, mdnsDiscovery } from '@/utils/mdns';
 import React, { createContext, useContext, useEffect, useState } from 'react';
+import { Platform } from 'react-native';
 
 
 const USE_MOCK_DATA = false; 
@@ -16,7 +17,7 @@ interface ListContextType {
 const mockRobots: DiscoveredRobotInfo[] = [
   {
     name: "yakisikli2",
-    ip: "1192.168.43.64",
+    ip: "192.168.43.64",
     type: "Duckiebot",
     configuration: "DB21M"
   },
@@ -34,8 +35,14 @@ const ListContext = createContext<ListContextType | undefined>(undefined);
 export const DuckiebotProvider = ({ children }: { children: React.ReactNode }) => {
   const [data, setData] = useState<DiscoveredRobotInfo[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const isWeb = Platform.OS === 'web';
 
   const startScan = () => {
+    if (isWeb) {
+      setIsLoading(false);
+      setData(mockRobots);
+      return;
+    }
 
     if(USE_MOCK_DATA) {
       setIsLoading(true);
@@ -63,9 +70,11 @@ export const DuckiebotProvider = ({ children }: { children: React.ReactNode }) =
   useEffect(() => {
     startScan();
     return () => {
-      mdnsDiscovery.stop();
+      if (!isWeb) {
+        mdnsDiscovery.stop();
+      }
     };
-  }, []);
+  }, [isWeb]);
 
   return (
     <ListContext.Provider value={{ data, refreshData: startScan, isLoading }}>

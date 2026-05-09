@@ -6,7 +6,7 @@ import { useFocusEffect, useNavigation, useRouter } from 'expo-router';
 import * as ScreenOrientation from 'expo-screen-orientation';
 import { StatusBar } from 'expo-status-bar';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Animated, BackHandler, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Animated, BackHandler, Image, Platform, StyleSheet, View } from 'react-native';
 import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
 import { runOnJS, useSharedValue, withSpring } from 'react-native-reanimated';
 import { WebView } from 'react-native-webview';
@@ -38,6 +38,7 @@ const VideoStream: React.FC<VideoStreamProps> = () => {
   const webViewRef = useRef<WebView>(null);
   const lastUpdate = useRef<number>(0);
   const { width, height } = useWindowDimensions();
+  const isWeb = Platform.OS === 'web';
   const navigation = useNavigation();
   const router = useRouter();
 
@@ -45,6 +46,7 @@ const VideoStream: React.FC<VideoStreamProps> = () => {
   const FRAME_INTERVAL = 1000 / TARGET_FPS;
 
   const [hasData, setHasData] = useState(false);
+  const [frameUri, setFrameUri] = useState<string | null>(null);
   const isConnected = connectionStatus === 'connected';
 
   const steerValue = useSharedValue<number>(0);
@@ -134,7 +136,6 @@ const VideoStream: React.FC<VideoStreamProps> = () => {
       }
     })
     .onTouchesMove((e, manager) => {
-      console.log("Throttle move");
       for (const touch of e.changedTouches) {
         const tracker = activeTrackers.value[touch.id];
         if (tracker) {
@@ -226,6 +227,69 @@ const VideoStream: React.FC<VideoStreamProps> = () => {
     router.back();
   };
 
+  const updateSteerFromPoint = useCallback((x: number, y: number) => {
+    const centerX = COMPONENT_SIZE / 2;
+    const centerY = COMPONENT_SIZE / 2;
+    const deltaX = x - centerX;
+    const deltaY = y - centerY;
+
+    let angleRad = Math.atan2(deltaY, deltaX);
+    let angleDeg = angleRad * (180 / Math.PI);
+    angleDeg += 90;
+    if (angleDeg > 180) angleDeg -= 360;
+
+    const clampedAngle = Math.max(-100, Math.min(100, angleDeg));
+    rotation.value = clampedAngle;
+    handleSteer(clampedAngle / 100);
+  }, [handleSteer, rotation]);
+
+  const updateThrottleFromPoint = useCallback((startY: number, startVal: number, currentY: number) => {
+    const deltaY = currentY - startY;
+    const newY = startVal + deltaY;
+    const clampedY = Math.max(-MAX_THROTTLE_MOVE, Math.min(MAX_THROTTLE_MOVE, newY));
+    translateY.value = clampedY;
+    handleThrottle(-clampedY / MAX_THROTTLE_MOVE);
+  }, [handleThrottle, translateY, MAX_THROTTLE_MOVE]);
+
+  const steerActiveRef = useRef(false);
+  const throttleActiveRef = useRef<{ startY: number; startVal: number } | null>(null);
+
+  const handleSteerPointerDown = useCallback((e: any) => {
+    steerActiveRef.current = true;
+    updateSteerFromPoint(e.nativeEvent.locationX, e.nativeEvent.locationY);
+  }, [updateSteerFromPoint]);
+
+  const handleSteerPointerMove = useCallback((e: any) => {
+    if (!steerActiveRef.current) return;
+    updateSteerFromPoint(e.nativeEvent.locationX, e.nativeEvent.locationY);
+  }, [updateSteerFromPoint]);
+
+  const handleSteerPointerUp = useCallback(() => {
+    steerActiveRef.current = false;
+    rotation.value = withSpring(0);
+    handleSteer(0);
+  }, [handleSteer, rotation]);
+
+  const handleThrottlePointerDown = useCallback((e: any) => {
+    throttleActiveRef.current = { startY: e.nativeEvent.locationY, startVal: translateY.value };
+    updateThrottleFromPoint(e.nativeEvent.locationY, translateY.value, e.nativeEvent.locationY);
+  }, [translateY.value, updateThrottleFromPoint]);
+
+  const handleThrottlePointerMove = useCallback((e: any) => {
+    if (!throttleActiveRef.current) return;
+    updateThrottleFromPoint(
+      throttleActiveRef.current.startY,
+      throttleActiveRef.current.startVal,
+      e.nativeEvent.locationY
+    );
+  }, [updateThrottleFromPoint]);
+
+  const handleThrottlePointerUp = useCallback(() => {
+    throttleActiveRef.current = null;
+    translateY.value = withSpring(0);
+    handleThrottle(0);
+  }, [handleThrottle, translateY]);
+
   useEffect(() => {
     if (!isConnected || !duckiebot?.name) return;
     const topicName = `/camera_node/image/compressed`;
@@ -236,93 +300,111 @@ const VideoStream: React.FC<VideoStreamProps> = () => {
       if (now - lastUpdate.current > FRAME_INTERVAL) {
         if (!hasData) setHasData(true);
         const base64Str = `data:image/jpeg;base64,${message.data}`;
-        const script = `
-          var img = document.getElementById('streamImage');
-          if (img) img.src = "${base64Str}";
-          true; 
-        `;
-        webViewRef.current?.injectJavaScript(script);
+        if (isWeb) {
+          setFrameUri(base64Str);
+        } else {
+          const script = `
+            var img = document.getElementById('streamImage');
+            if (img) img.src = "${base64Str}";
+            true; 
+          `;
+          webViewRef.current?.injectJavaScript(script);
+        }
         lastUpdate.current = now;
       }
     });
     return () => unsubscribe;
-  }, [connectionStatus, duckiebot?.name, hasData]);
+  }, [connectionStatus, duckiebot?.name, hasData, isWeb]);
+
+  const content = (
+    <View style={styles.container}>
+      <StatusBar hidden />
+
+      <View style={styles.fullScreenVideo} pointerEvents="none">
+        {isWeb ? (
+          <Image
+            source={frameUri ? { uri: frameUri } : undefined}
+            style={styles.webStreamImage}
+            resizeMode="contain"
+          />
+        ) : (
+          <WebView
+            ref={webViewRef}
+            originWhitelist={['*']}
+            source={{ html: HTML_CONTENT }}
+            style={{ flex: 1, backgroundColor: 'transparent' }}
+            scrollEnabled={false}
+            javaScriptEnabled={true}
+            containerStyle={{ backgroundColor: 'black' }}
+          />
+        )}
+
+        {(!isConnected || !hasData) && (
+          <View style={styles.overlayPlaceholder}>
+            {isConnected ? (
+              <YStack alignItems="center" space="$2">
+                <ActivityIndicator size="large" color="#FFD700" />
+                <Text color="white">Waiting for stream...</Text>
+              </YStack>
+            ) : (
+              <Text style={styles.infoText}>Duckiebot Not Connected</Text>
+            )}
+          </View>
+        )}
+      </View>
+
+      <Button
+        position="absolute"
+        top={20}
+        left={20}
+        zIndex={100}
+        size="$3"
+        circular
+        backgroundColor="rgba(0,0,0,0.5)"
+        borderWidth={1}
+        borderColor="rgba(255,255,255,0.3)"
+        onPress={handleBack}
+        icon={ChevronLeft}
+      />
+
+      <View style={styles.controlsRow} pointerEvents="auto">
+        <Animated.View
+          style={[styles.controlContainer, isWeb && styles.controlContainerWeb]}
+          onPointerDown={isWeb ? handleSteerPointerDown : undefined}
+          onPointerMove={isWeb ? handleSteerPointerMove : undefined}
+          onPointerUp={isWeb ? handleSteerPointerUp : undefined}
+          onPointerCancel={isWeb ? handleSteerPointerUp : undefined}
+        >
+          <SteeringWheel size={200} onSteer={handleSteer} rotation={rotation} />
+        </Animated.View>
+
+        <Animated.View
+          style={[styles.controlContainer, isWeb && styles.controlContainerWeb]}
+          onPointerDown={isWeb ? handleThrottlePointerDown : undefined}
+          onPointerMove={isWeb ? handleThrottlePointerMove : undefined}
+          onPointerUp={isWeb ? handleThrottlePointerUp : undefined}
+          onPointerCancel={isWeb ? handleThrottlePointerUp : undefined}
+        >
+          <ThrottleController height={220} onThrottle={handleThrottle} translateY={translateY} />
+        </Animated.View>
+      </View>
+
+      <View style={styles.headerOverlay} pointerEvents="none">
+        <Text color="white" fontWeight="bold" style={{ textShadowColor: 'black', textShadowRadius: 3 }}>
+          {duckiebot?.name || 'Unknown'}
+        </Text>
+      </View>
+    </View>
+  );
+
+  if (isWeb) {
+    return <View style={{ flex: 1 }}>{content}</View>;
+  }
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <GestureDetector gesture={masterGesture}>
-        <View style={styles.container}>
-          <StatusBar hidden />
-
-          <View style={styles.fullScreenVideo} pointerEvents='none'>
-            <WebView
-                ref={webViewRef}
-                originWhitelist={['*']}
-                source={{ html: HTML_CONTENT }}
-                style={{ flex: 1, backgroundColor: 'transparent' }}
-                scrollEnabled={false}
-                javaScriptEnabled={true}
-                containerStyle={{ backgroundColor: 'black' }} 
-            />
-            
-            {(!isConnected || !hasData) && (
-              <View style={styles.overlayPlaceholder}>
-                {isConnected ? (
-                  <YStack alignItems="center" space="$2">
-                    <ActivityIndicator size="large" color="#FFD700" />
-                    <Text color="white">Waiting for stream...</Text>
-                  </YStack>
-                ) : (
-                  <Text style={styles.infoText}>Duckiebot Not Connected</Text>
-                )}
-              </View>
-            )}
-          </View>
-
-          <Button
-            position="absolute"
-            top={20}
-            left={20}
-            zIndex={100} 
-            size="$3"
-            circular 
-            backgroundColor="rgba(0,0,0,0.5)" 
-            borderWidth={1}
-            borderColor="rgba(255,255,255,0.3)"
-            onPress={handleBack}
-            icon={ChevronLeft} 
-          />
-         
-          <View style={styles.controlsRow} pointerEvents="auto">
-            
-            <Animated.View style={styles.controlContainer}> 
-              <SteeringWheel 
-                size={200} 
-                onSteer={handleSteer} 
-                rotation={rotation} 
-              />
-            </Animated.View>
-
-            <Animated.View style={styles.controlContainer}>
-              <ThrottleController 
-                height={220} 
-                onThrottle={handleThrottle} 
-                translateY={translateY} 
-              />
-            </Animated.View>
-
-          </View>
-
-          <View style={styles.headerOverlay} pointerEvents="none">
-            <Text color="white" fontWeight="bold" style={{textShadowColor: 'black', textShadowRadius: 3}}>
-                {duckiebot?.name || "Unknown"}
-            </Text>
-          </View>
-          
-        </View>
-      </GestureDetector>
+      <GestureDetector gesture={masterGesture}>{content}</GestureDetector>
     </GestureHandlerRootView>
-    
   );
 };
 
@@ -336,6 +418,10 @@ const styles = StyleSheet.create({
     height: '100%',
     zIndex: -1, 
     position: 'absolute', 
+  },
+  webStreamImage: {
+    width: '100%',
+    height: '100%',
   },
   overlayPlaceholder: {
     ...StyleSheet.absoluteFillObject, 
@@ -371,6 +457,9 @@ const styles = StyleSheet.create({
     width: 220,
     height: 220,
     backgroundColor: 'transparent', 
+  },
+  controlContainerWeb: {
+    touchAction: 'none',
   }
 });
 

@@ -35,6 +35,7 @@ export default function RootLayout() {
         <RosProvider> 
         <Stack>
           <Stack.Screen name="index" options={{ headerShown: false }} />
+          <Stack.Screen name="qr" options={{ headerShown: false }} />
           <Stack.Screen name="details/[id]" options={{ headerShown: false }} />
         </Stack>
       </RosProvider>

@@ -1,3 +1,4 @@
+import { Platform } from 'react-native';
 import Zeroconf from 'react-native-zeroconf';
 
 export interface DiscoveredRobotInfo {
@@ -15,11 +16,16 @@ export interface DiscoveredRobotInfo {
 export type MdnsCallback = (service: DiscoveredRobotInfo) => void;
 
 class MdnsDiscoveryService {
-  private zeroconf: Zeroconf;
+  private zeroconf: Zeroconf | null;
   private services: Map<string, DiscoveredRobotInfo> = new Map();
   private callback: MdnsCallback | null = null;
 
   constructor() {
+    if (Platform.OS === 'web') {
+      this.zeroconf = null;
+      return;
+    }
+
     this.zeroconf = new Zeroconf();
 
     this.zeroconf.on('found', (name) => {
@@ -39,6 +45,11 @@ class MdnsDiscoveryService {
 
   
   public start(onDiscover: MdnsCallback) {
+    if (!this.zeroconf) {
+      console.warn('[mDNS] Not supported on web.');
+      return;
+    }
+
     this.callback = onDiscover;
     this.services.clear();
     
@@ -47,6 +58,8 @@ class MdnsDiscoveryService {
   }
 
   public stop() {
+    if (!this.zeroconf) return;
+
     console.log('[mDNS] Stopping scan...');
     this.zeroconf.stop();
     this.callback = null;

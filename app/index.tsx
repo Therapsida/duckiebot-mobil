@@ -10,6 +10,16 @@ export default function HomeScreen() {
   const router = useRouter();
   return (
     <YStack flex={1} backgroundColor="$background" padding="$4">
+      <Button
+        size="$4"
+        backgroundColor="$color"
+        marginBottom="$4"
+        onPress={() => router.push('/qr')}
+      >
+        <Text color="$background" fontFamily="$body">
+          Show Web QR
+        </Text>
+      </Button>
       
       {/* Başlık */}
       {data?.length > 0 && (

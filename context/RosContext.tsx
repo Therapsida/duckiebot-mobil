@@ -70,6 +70,12 @@ export const RosProvider = ({ children }: { children: React.ReactNode }) => {
   const connect = (ip: string) => {
     if (!rosRef.current) return;
     const cleanIp = ip.trim();
+    const isValidHost = /^(\d{1,3}\.){3}\d{1,3}$/.test(cleanIp) || /^[a-zA-Z0-9.-]+$/.test(cleanIp);
+    if (!isValidHost) {
+      console.warn(`ROS Target IP/host is invalid: ${cleanIp}`);
+      return;
+    }
+
     const url = `ws://${cleanIp}:9001`;
     console.log(`ROS Target URL: ${url}`);
     rosRef.current.connect(url);
