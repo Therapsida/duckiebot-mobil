@@ -2,7 +2,7 @@ import { DiscoveredRobotInfo, mdnsDiscovery } from '@/utils/mdns'; // Importlar�
 import React, { createContext, useContext, useEffect, useState } from 'react';
 
 
-const USE_MOCK_DATA = true; // Gerçek keşif yerine sahte verileri kullanmak için
+const USE_MOCK_DATA = true;
 
 
 

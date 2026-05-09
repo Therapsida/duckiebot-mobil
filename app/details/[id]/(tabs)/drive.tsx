@@ -6,14 +6,12 @@ import { useFocusEffect, useNavigation, useRouter } from 'expo-router';
 import * as ScreenOrientation from 'expo-screen-orientation';
 import { StatusBar } from 'expo-status-bar';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Animated, BackHandler, Dimensions, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Animated, BackHandler, StyleSheet, View } from 'react-native';
 import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
 import { runOnJS, useSharedValue, withSpring } from 'react-native-reanimated';
 import { WebView } from 'react-native-webview';
-import { Button, Text, YStack } from 'tamagui';
+import { Button, Text, YStack, useWindowDimensions } from 'tamagui';
 
-// Ekran boyutlarını al (Hesaplamalar için gerekli)
-const { width, height } = Dimensions.get('window');
 
 interface VideoStreamProps {
   duckiebotName?: string;
@@ -39,6 +37,7 @@ const VideoStream: React.FC<VideoStreamProps> = () => {
   const { duckiebot, connectionStatus, subscribe, publish } = useActiveDuckiebot();
   const webViewRef = useRef<WebView>(null);
   const lastUpdate = useRef<number>(0);
+  const { width, height } = useWindowDimensions();
   const navigation = useNavigation();
   const router = useRouter();
 
@@ -68,10 +67,6 @@ const VideoStream: React.FC<VideoStreamProps> = () => {
     const val_left = ((1 - steerValue.value) / 2)*speed
     const val_right = ((1 + steerValue.value) / 2)*speed
 
-    
-
-    console.log(`Publishing - Left: ${val_left.toFixed(2)}, Right: ${val_right.toFixed(2)}`);
-    
     publish(`/wheels_driver_node/wheels_cmd`, 'duckietown_msgs/WheelsCmdStamped', {
       header: { seq: 0, stamp: { secs: 0, nsecs: 0 }, frame_id: '' },
       vel_left: val_left,
@@ -99,8 +94,9 @@ const VideoStream: React.FC<VideoStreamProps> = () => {
   const COMPONENT_SIZE = 220; 
   const MARGIN = 20; 
 
-  const masterGesture = Gesture.Manual()
+  const masterGesture = Gesture.Native()
     .onTouchesDown((e, manager) => {
+      manager.activate();
       
       for (const touch of e.changedTouches) {
      
@@ -140,7 +136,6 @@ const VideoStream: React.FC<VideoStreamProps> = () => {
       for (const touch of e.changedTouches) {
         const tracker = activeTrackers.value[touch.id];
         if (tracker) {
-
            const isInsideSteering = 
             touch.x >= MARGIN && 
             touch.x <= (MARGIN + COMPONENT_SIZE) &&
@@ -210,7 +205,7 @@ const VideoStream: React.FC<VideoStreamProps> = () => {
   useFocusEffect(
     useCallback(() => {
       const lockLandscape = async () => {
-        await ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.LANDSCAPE_RIGHT);
+        await ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.LANDSCAPE);
         navigation.setOptions({ tabBarStyle: { display: "none" } });
       };
       lockLandscape();
@@ -299,7 +294,7 @@ const VideoStream: React.FC<VideoStreamProps> = () => {
             icon={ChevronLeft} 
           />
          
-          <View style={styles.controlsRow} pointerEvents="none">
+          <View style={styles.controlsRow} pointerEvents="auto">
             
             <Animated.View style={styles.controlContainer}> 
               <SteeringWheel 
@@ -309,7 +304,6 @@ const VideoStream: React.FC<VideoStreamProps> = () => {
               />
             </Animated.View>
 
-            {/* SAĞ: GAZ */}
             <Animated.View style={styles.controlContainer}>
               <ThrottleController 
                 height={220} 

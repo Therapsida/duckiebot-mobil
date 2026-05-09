@@ -4,7 +4,7 @@ import { Image, View, YStack } from 'tamagui';
 
 interface Props {
   height?: number;
-  onThrottle?: (value: number) => void; // 1 (İleri) ... 0 (Dur) ... -1 (Geri)
+  onThrottle?: (value: number) => void;
     translateY: SharedValue<number>;
 }
 
@@ -20,19 +20,18 @@ const ThrottleComponent = ({ height = 200, onThrottle, translateY}: Props) => {
 
   return (
       <YStack
-        // --- KONUMLANDIRMA (Sağ Alt & En Üst) ---
         position="absolute"
         bottom={40}
-        right={40} // Sağ tarafta dursun
+        right={40} 
         zIndex={100}
-        // ----------------------------------------
+
         
         height={height}
         width={80}
         justifyContent="center"
         alignItems="center"
       >
-        {/* Arka Plandaki Kanal (Track) */}
+       
         <View 
           width={10} 
           height="100%" 
@@ -41,10 +40,8 @@ const ThrottleComponent = ({ height = 200, onThrottle, translateY}: Props) => {
           position="absolute"
         />
 
-        {/* Hareket Eden Pedal (Knob) */}
         <Animated.View style={[animatedStyle, { width: 80, height: 100, justifyContent: 'center', alignItems: 'center' }]}>
-          <Image
-            // Gaz Pedalı Görseli
+          <Image    
             source={require('../assets/images/pedal.png')}
             width={70} 
             height={70} 
