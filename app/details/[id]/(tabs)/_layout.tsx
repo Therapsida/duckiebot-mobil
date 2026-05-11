@@ -73,6 +73,20 @@ export default function DrawerLayout() {
           ),
         }}
       />
+      <Tabs.Screen
+        name="map-link"
+        options={{
+          title: "Map",
+          href: "/map-3d",
+          tabBarIcon: ({ color, size, focused }) => (
+            <Ionicons
+              name={focused ? "map" : "map-outline"}
+              size={size}
+              color={color}
+            />
+          ),
+        }}
+      />
     </Tabs>
   );
 }

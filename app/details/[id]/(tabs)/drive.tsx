@@ -114,7 +114,7 @@ const VideoStream: React.FC<VideoStreamProps> = () => {
             await ScreenOrientation.lockAsync(
               ScreenOrientation.OrientationLock.LANDSCAPE,
             );
-          } catch (e) {}
+          } catch (e) { }
         }
         navigation.setOptions({ tabBarStyle: { display: "none" } });
       };
@@ -135,7 +135,7 @@ const VideoStream: React.FC<VideoStreamProps> = () => {
         if (!isWeb) {
           ScreenOrientation.lockAsync(
             ScreenOrientation.OrientationLock.PORTRAIT_UP,
-          ).catch(() => {});
+          ).catch(() => { });
         }
       };
     }, [isWeb, navigation]),
@@ -145,7 +145,7 @@ const VideoStream: React.FC<VideoStreamProps> = () => {
     if (!isWeb) {
       await ScreenOrientation.lockAsync(
         ScreenOrientation.OrientationLock.PORTRAIT_UP,
-      ).catch(() => {});
+      ).catch(() => { });
     }
     router.back();
   };

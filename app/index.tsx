@@ -1,80 +1,135 @@
 import { useRouter } from 'expo-router';
-import React from 'react';
-import { FlatList } from 'react-native';
-import { Button, Spinner, Text, View, YStack } from 'tamagui';
+import React, { useState } from 'react';
+import { FlatList, View, Platform } from 'react-native';
+import { Button, Spinner, Text, XStack, YStack } from 'tamagui';
 import { DuckiebotCards } from '../components/DuckiebotCards';
 import { useDiscoveredDuckiebotInfo } from '../context/DuckiebotContext';
 
 export default function HomeScreen() {
   const { data, refreshData, isLoading } = useDiscoveredDuckiebotInfo();
   const router = useRouter();
-  return (
-    <YStack flex={1} backgroundColor="$background" padding="$4">
-      <Button
-        size="$4"
-        backgroundColor="$color"
-        marginBottom="$4"
-        onPress={() => router.push('/qr')}
-      >
-        <Text color="$background" fontFamily="$body">
-          Show Web QR
-        </Text>
-      </Button>
-      
-      {/* Başlık */}
-      {data?.length > 0 && (
-        <Text 
-          fontFamily="$heading" 
-          fontSize="$6"        
-          color="$color"        
-          textAlign="center"
-          marginBottom="$10"
-          marginTop="$5"
+  const [showDriveList, setShowDriveList] = useState(false);
 
-        >
-          Found Duckiebots
-        </Text>
+  const mockData = [
+    { name: 'Duckiebot-1', ip: 'mock-ip-1' },
+    { name: 'Duckiebot-2', ip: 'mock-ip-2' },
+  ];
+
+  const displayData = data && data.length > 0 ? data : mockData;
+  const hasBots = displayData && displayData.length > 0;
+
+  return (
+    <YStack flex={1} backgroundColor="$background" padding="$4" justifyContent="center">
+      {hasBots ? (
+        <YStack flex={showDriveList ? 1 : 0} space="$6" alignItems="center" paddingHorizontal="$2" marginTop={showDriveList ? '$6' : 0}>
+          <Text
+            fontFamily="$heading"
+            fontSize="$7"
+            color="$color"
+            textAlign="center"
+            marginBottom="$2"
+            lineHeight={40}
+          >
+            {showDriveList ? 'Select a Duckiebot' : `Duckiebots are found!\nWhere do you want to go?`}
+          </Text>
+
+          {!showDriveList ? (
+            <XStack space="$4" width="100%">
+              <Button
+                size="$5"
+                flex={1}
+                backgroundColor="$color"
+                pressStyle={{ scale: 0.97 }}
+                onPress={() => setShowDriveList(true)}
+              >
+                <Text color="$background" fontFamily="$body" fontSize="$4" fontWeight="bold">
+                  Manual drive
+                </Text>
+              </Button>
+
+              <Button
+                size="$5"
+                flex={1}
+                backgroundColor="$color"
+                pressStyle={{ scale: 0.97 }}
+                onPress={() => router.push('/map-3d')}
+              >
+                <Text color="$background" fontFamily="$body" fontSize="$4" fontWeight="bold">
+                  Open map
+                </Text>
+              </Button>
+            </XStack>
+          ) : (
+            <YStack width="100%" flex={1}>
+              <FlatList
+                data={displayData}
+                keyExtractor={(item) => item.ip}
+                contentContainerStyle={{ paddingBottom: 20 }}
+                showsVerticalScrollIndicator={false}
+                renderItem={({ item }) => (
+                  <View style={{ marginBottom: 12 }}>
+                    <DuckiebotCards
+                      item={item}
+                      onPress={() => {
+                        router.push({ pathname: '/details/[id]', params: { id: item.name } });
+                      }}
+                    />
+                  </View>
+                )}
+              />
+              <Button
+                size="$4"
+                backgroundColor="transparent"
+                borderWidth={1}
+                borderColor="$color"
+                marginTop="$4"
+                marginBottom="$4"
+                onPress={() => setShowDriveList(false)}
+              >
+                <Text color="$color" fontFamily="$body" fontSize="$3" fontWeight="bold">
+                  Back
+                </Text>
+              </Button>
+            </YStack>
+          )}
+        </YStack>
+      ) : (
+        <YStack flex={1} justifyContent="center" alignItems="center" space="$5">
+          <Text fontFamily="$body" fontSize="$5" color="$color">
+            {isLoading ? 'Searching...' : 'No duckiebots found.'}
+          </Text>
+
+          <Button
+            size="$5"
+            backgroundColor="$color"
+            disabled={isLoading}
+            onPress={refreshData}
+            opacity={isLoading ? 0.7 : 1}
+            icon={isLoading ? <Spinner color="$background" /> : undefined}
+          >
+            <Text color="$background" fontFamily="$body" fontSize="$4" fontWeight="bold">
+              Search Duckiebots
+            </Text>
+          </Button>
+
+        </YStack>
       )}
 
-      <FlatList
-        data={data}
-        keyExtractor={(item) => item.ip}
-        
-        contentContainerStyle={{ flexGrow: 1, justifyContent: data?.length ? 'flex-start' : 'center' }}
-        
-        ListEmptyComponent={
-          <YStack flex={1} justifyContent="center" alignItems="center" space="$4">
-            
-            <Text fontFamily="$body" fontSize="$5" color="$color">
-              {isLoading ? 'Searching...' : 'No duckiebots found.'}
-            </Text>
-
-            <Button
-              size="$4"
-              backgroundColor="$color"
-              disabled={isLoading}
-              onPress={refreshData}
-              opacity={isLoading ? 0.7 : 1}
-              icon={isLoading ? <Spinner color="$background" /> : undefined}
-            >
-              <Text color="$background" fontFamily="$body">
-                Search Duckiebots
-              </Text>
-            </Button>
-          </YStack>
-        }
-
-        renderItem={({ item }) => (
-          <View marginBottom="$3">
-            <DuckiebotCards
-              item={item}
-              onPress={() => {
-                router.push({ pathname: '/details/[id]', params: { id: item.name } });
-              }}
-            />
-          </View>
-        )}
-      />
+      {Platform.OS === 'web' && (
+        <Button
+          size="$4"
+          backgroundColor="transparent"
+          borderWidth={1}
+          borderColor="$color"
+          marginTop="$6"
+          alignSelf="center"
+          onPress={() => router.push('/qr')}
+        >
+          <Text color="$color" fontFamily="$body" fontSize="$3" fontWeight="bold">
+            Scan QR to open on Phone
+          </Text>
+        </Button>
+      )}
     </YStack>
   );
 }

@@ -8,6 +8,12 @@
     "scheme": "ducktor",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
+    "assetBundlePatterns": [
+      "assets/textures/**/*",
+      "assets/meshes/**/*",
+      "assets/fonts/**/*",
+      "assets/images/**/*"
+    ],
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.anonymous.Ducktor"

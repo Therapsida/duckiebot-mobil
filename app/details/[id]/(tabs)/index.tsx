@@ -2,10 +2,13 @@ import { useActiveDuckiebot } from '@/context/ActiveDuckiebotContext';
 import React from 'react';
 import { Button, Image, Spinner, Text, XStack, YStack } from 'tamagui';
 
+import { useRouter } from 'expo-router';
+
 export default function HomeScreen() {
   const { duckiebot, connectionStatus, serviceCall, retryConnection } = useActiveDuckiebot();
+  const router = useRouter();
 
-   const renderStatus = () => {
+  const renderStatus = () => {
     switch (connectionStatus) {
       case 'connected':
         return (
@@ -59,6 +62,21 @@ export default function HomeScreen() {
 
     <YStack flex={1} backgroundColor="$background" padding="$4" justifyContent="center" alignItems="center">
       
+      <Button
+        position="absolute"
+        top={50}
+        left={16}
+        zIndex={100}
+        size="$3"
+        circular
+        backgroundColor="rgba(0,0,0,0.7)"
+        borderWidth={1}
+        borderColor="rgba(255,255,255,0.3)"
+        onPress={() => router.replace('/')}
+      >
+        <Text color="white">←</Text>
+      </Button>
+
     <YStack marginBottom="$8" alignItems="center">
       <Image
       source={require('../../../../assets/images/duckietownTown.png')} 
