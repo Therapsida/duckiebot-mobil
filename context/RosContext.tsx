@@ -1,9 +1,14 @@
-import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
+import React, {
+    createContext,
+    useContext,
+    useEffect,
+    useRef,
+    useState,
+} from "react";
 
-// @ts-ignore
-const ROSLIB = require('../utils/roslib.js'); 
+const ROSLIB = require("../utils/roslib.js");
 
-import 'text-encoding';
+import "text-encoding";
 
 interface RosContextType {
   isConnected: boolean;
@@ -11,8 +16,16 @@ interface RosContextType {
   disconnect: () => void;
   ros: any;
   sendMessage: (topicName: string, messageType: string, payload: any) => void;
-  getMessage: (topicName: string, messageType: string, callback: (msg: any) => void) => void;
-  callService: (serviceName: string, serviceType: string, args: any) => Promise<any>;
+  getMessage: (
+    topicName: string,
+    messageType: string,
+    callback: (msg: any) => void,
+  ) => void;
+  callService: (
+    serviceName: string,
+    serviceType: string,
+    args: any,
+  ) => Promise<any>;
 }
 
 const RosContext = createContext<RosContextType | undefined>(undefined);
@@ -28,40 +41,38 @@ export const RosProvider = ({ children }: { children: React.ReactNode }) => {
     }
 
     let RosConstructor;
-    if (typeof ROSLIB.Ros === 'function') {
+    if (typeof ROSLIB.Ros === "function") {
       RosConstructor = ROSLIB.Ros;
-    } else if (typeof ROSLIB === 'function') {
+    } else if (typeof ROSLIB === "function") {
       RosConstructor = ROSLIB;
     } else {
-       // @ts-ignore
-       RosConstructor = global.ROSLIB?.Ros;
+      RosConstructor = global.ROSLIB?.Ros;
     }
 
     if (!RosConstructor) {
-        console.error("ROSLIB.Ros constructor could not be found.");
-        return;
+      console.error("ROSLIB.Ros constructor could not be found.");
+      return;
     }
 
     try {
       rosRef.current = new RosConstructor({
-        encoding: 'ascii'
+        encoding: "ascii",
       });
 
-      rosRef.current.on('connection', () => {
-        console.log('ROS is connected!');
+      rosRef.current.on("connection", () => {
+        console.log("ROS is connected!");
         setIsConnected(true);
       });
 
-      rosRef.current.on('error', (error: any) => {
-        console.log('ROS connection error:', error);
+      rosRef.current.on("error", (error: any) => {
+        console.log("ROS connection error:", error);
         setIsConnected(false);
       });
 
-      rosRef.current.on('close', () => {
-        console.log('ROS connection closed.');
+      rosRef.current.on("close", () => {
+        console.log("ROS connection closed.");
         setIsConnected(false);
       });
-
     } catch (err) {
       console.error("Ros could not start: ", err);
     }
@@ -70,7 +81,9 @@ export const RosProvider = ({ children }: { children: React.ReactNode }) => {
   const connect = (ip: string) => {
     if (!rosRef.current) return;
     const cleanIp = ip.trim();
-    const isValidHost = /^(\d{1,3}\.){3}\d{1,3}$/.test(cleanIp) || /^[a-zA-Z0-9.-]+$/.test(cleanIp);
+    const isValidHost =
+      /^(\d{1,3}\.){3}\d{1,3}$/.test(cleanIp) ||
+      /^[a-zA-Z0-9.-]+$/.test(cleanIp);
     if (!isValidHost) {
       console.warn(`ROS Target IP/host is invalid: ${cleanIp}`);
       return;
@@ -91,53 +104,57 @@ export const RosProvider = ({ children }: { children: React.ReactNode }) => {
     if (rosRef.current) rosRef.current.close();
   };
 
-  const sendMessage = (topicName: string, messageType: string, payload: any) => {
+  const sendMessage = (
+    topicName: string,
+    messageType: string,
+    payload: any,
+  ) => {
     if (!rosRef.current || !isConnected) return;
 
     try {
-
       const TopicClass = ROSLIB.Topic || (global as any).ROSLIB?.Topic;
       const MessageClass = ROSLIB.Message || (global as any).ROSLIB?.Message;
 
       if (!TopicClass || !MessageClass) {
-          console.warn("Topic/Message class could not be found in ROSLIB.");
-          return;
+        console.warn("Topic/Message class could not be found in ROSLIB.");
+        return;
       }
 
       const topic = new TopicClass({
         ros: rosRef.current,
         name: topicName,
-        messageType: messageType
+        messageType: messageType,
       });
 
       const msg = new MessageClass(payload);
       topic.publish(msg);
-      
     } catch (err) {
       console.error("Message send error:", err);
     }
   };
 
-
-  const getMessage = (topicName: string, messageType: string, callback: (msg: any) => void) => {
+  const getMessage = (
+    topicName: string,
+    messageType: string,
+    callback: (msg: any) => void,
+  ) => {
     if (!rosRef.current || !isConnected) return;
-    
+
     try {
       const TopicClass = ROSLIB.Topic || (global as any).ROSLIB?.Topic;
       const MessageClass = ROSLIB.Message || (global as any).ROSLIB?.Message;
-      
-      if (!TopicClass || !MessageClass) {
 
-          console.warn("Topic/Message class could not be found in ROSLIB.");
-          return;
+      if (!TopicClass || !MessageClass) {
+        console.warn("Topic/Message class could not be found in ROSLIB.");
+        return;
       }
-      
+
       const topic = new TopicClass({
         ros: rosRef.current,
         name: topicName,
-        messageType: messageType
+        messageType: messageType,
       });
-      
+
       topic.subscribe((message: any) => {
         callback(message);
       });
@@ -146,43 +163,62 @@ export const RosProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
-  const callService = (serviceName: string, serviceType: string, args: any): Promise<any> => {
+  const callService = (
+    serviceName: string,
+    serviceType: string,
+    args: any,
+  ): Promise<any> => {
     return new Promise((resolve, reject) => {
       if (!rosRef.current || !isConnected) {
         reject("ROS is not connected");
         return;
       }
-      
+
       try {
         const ServiceClass = ROSLIB.Service || (global as any).ROSLIB?.Service;
-        const ServiceRequestClass = ROSLIB.ServiceRequest || (global as any).ROSLIB?.ServiceRequest;
-        
+        const ServiceRequestClass =
+          ROSLIB.ServiceRequest || (global as any).ROSLIB?.ServiceRequest;
+
         if (!ServiceClass || !ServiceRequestClass) {
-            reject("Service/ServiceRequest class could not be found in ROSLIB.");
-            return;
+          reject("Service/ServiceRequest class could not be found in ROSLIB.");
+          return;
         }
-        
+
         const service = new ServiceClass({
           ros: rosRef.current,
           name: serviceName,
-          serviceType: serviceType
+          serviceType: serviceType,
         });
-        
+
         const request = new ServiceRequestClass(args);
-        
-        service.callService(request, (result: any) => {
-          resolve(result);
-        }, (error: any) => {
-          reject(error);
-        });
+
+        service.callService(
+          request,
+          (result: any) => {
+            resolve(result);
+          },
+          (error: any) => {
+            reject(error);
+          },
+        );
       } catch (err) {
         reject(err);
       }
     });
-  }
+  };
 
   return (
-    <RosContext.Provider value={{ isConnected, connect, disconnect, ros: rosRef.current, sendMessage, getMessage, callService }}>
+    <RosContext.Provider
+      value={{
+        isConnected,
+        connect,
+        disconnect,
+        ros: rosRef.current,
+        sendMessage,
+        getMessage,
+        callService,
+      }}
+    >
       {children}
     </RosContext.Provider>
   );

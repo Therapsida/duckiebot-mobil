@@ -1,9 +1,8 @@
-import { config as configBase } from '@tamagui/config/v3'; // Veya kullandığın base config
-import { createFont, createTamagui, createTokens } from 'tamagui';
+import { config as configBase } from "@tamagui/config/v3";
+import { createFont, createTamagui, createTokens } from "tamagui";
 
-// 1. Font Tanımı
 const silkscreenFont = createFont({
-  family: 'Silkscreen',
+  family: "Silkscreen",
   size: {
     1: 12,
     1.5: 13,
@@ -25,27 +24,26 @@ const silkscreenFont = createFont({
     true: 25,
   },
   weight: {
-    400: '400',
-    700: '700', 
+    400: "400",
+    700: "700",
   },
-  
+
   letterSpacing: {
     400: 0,
     700: 0,
   },
   face: {
-    400: { normal: 'Silkscreen_400Regular' },
-    700: { normal: 'Silkscreen_700Bold' }, 
+    400: { normal: "Silkscreen_400Regular" },
+    700: { normal: "Silkscreen_700Bold" },
   },
 });
 
-
 const customTokens = createTokens({
-  ...configBase.tokens, 
+  ...configBase.tokens,
   color: {
     ...configBase.tokens.color,
-    duckYellow: '#F2A900', 
-    duckBlue: '#2FA4E7',  
+    duckYellow: "#F2A900",
+    duckBlue: "#2FA4E7",
   },
 });
 
@@ -53,17 +51,17 @@ const config = createTamagui({
   ...configBase,
   fonts: {
     ...configBase.fonts,
-    body: silkscreenFont,    
-    heading: silkscreenFont, 
+    body: silkscreenFont,
+    heading: silkscreenFont,
   },
   tokens: customTokens,
   themes: {
     ...configBase.themes,
-    'pixel-duck': {
-      background: customTokens.color.duckYellow, 
-      color: customTokens.color.duckBlue,        
-      borderColor: customTokens.color.duckBlue, 
-      primary: customTokens.color.duckBlue, 
+    "pixel-duck": {
+      background: customTokens.color.duckYellow,
+      color: customTokens.color.duckBlue,
+      borderColor: customTokens.color.duckBlue,
+      primary: customTokens.color.duckBlue,
     },
   },
 });
@@ -71,6 +69,6 @@ const config = createTamagui({
 export default config;
 export type Conf = typeof config;
 
-declare module 'tamagui' {
+declare module "tamagui" {
   interface TamaguiCustomConfig extends Conf {}
 }
