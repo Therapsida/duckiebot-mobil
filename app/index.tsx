@@ -1,22 +1,16 @@
+import { useDiscoveredDuckiebotInfo } from '../context/DuckiebotContext';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { FlatList, View, Platform } from 'react-native';
-import { Button, Spinner, Text, XStack, YStack } from 'tamagui';
+import { Button, Spinner, Switch, Text, XStack, YStack } from 'tamagui';
 import { DuckiebotCards } from '../components/DuckiebotCards';
-import { useDiscoveredDuckiebotInfo } from '../context/DuckiebotContext';
 
 export default function HomeScreen() {
-  const { data, refreshData, isLoading } = useDiscoveredDuckiebotInfo();
+  const { data, refreshData, isLoading, showMocks, setShowMocks } = useDiscoveredDuckiebotInfo();
   const router = useRouter();
   const [showDriveList, setShowDriveList] = useState(false);
 
-  const mockData = [
-    { name: 'Duckiebot-1', ip: 'mock-ip-1' },
-    { name: 'Duckiebot-2', ip: 'mock-ip-2' },
-  ];
-
-  const displayData = data && data.length > 0 ? data : mockData;
-  const hasBots = displayData && displayData.length > 0;
+  const hasBots = data && data.length > 0;
 
   return (
     <YStack flex={1} backgroundColor="$background" padding="$4" justifyContent="center">
@@ -62,7 +56,7 @@ export default function HomeScreen() {
           ) : (
             <YStack width="100%" flex={1}>
               <FlatList
-                data={displayData}
+                data={data}
                 keyExtractor={(item) => item.ip}
                 contentContainerStyle={{ paddingBottom: 20 }}
                 showsVerticalScrollIndicator={false}
@@ -115,13 +109,34 @@ export default function HomeScreen() {
         </YStack>
       )}
 
+      {/* Mock robots toggle — one switch controls ALL mock robots together */}
+      <XStack
+        alignSelf="center"
+        alignItems="center"
+        space="$3"
+        marginTop="$4"
+        opacity={0.75}
+      >
+        <Text fontFamily="$body" fontSize="$3" color="$color">
+          Mock robots
+        </Text>
+        <Switch
+          id="mock-robots-toggle"
+          size="$3"
+          checked={showMocks}
+          onCheckedChange={setShowMocks}
+        >
+          <Switch.Thumb animation="quick" />
+        </Switch>
+      </XStack>
+
       {Platform.OS === 'web' && (
         <Button
           size="$4"
           backgroundColor="transparent"
           borderWidth={1}
           borderColor="$color"
-          marginTop="$6"
+          marginTop="$4"
           alignSelf="center"
           onPress={() => router.push('/qr')}
         >

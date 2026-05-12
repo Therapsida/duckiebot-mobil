@@ -1,10 +1,11 @@
 import { MapCanvas } from '@/components/Map3D/MapCanvas';
 import { useDiscoveredDuckiebotInfo } from '@/context/DuckiebotContext';
+import { useMultiRos } from '@/context/RosContext';
 import { useRobotPaths } from '@/hooks/useRobotPaths';
 import { useRobotPoses } from '@/hooks/useRobotPoses';
 import { useRouter } from 'expo-router';
-import React, { useMemo } from 'react';
-import { Platform, View } from 'react-native';
+import React, { useCallback, useMemo } from 'react';
+import { Platform, View, Alert } from 'react-native';
 import { Button, Text, YStack } from 'tamagui';
 
 // ── Coordinate system & Tile Size ───────────────────────────────────────
@@ -26,6 +27,7 @@ const FALLBACK_ROBOTS = [
 
 export default function Map3DScreen() {
   const { data: duckiebots } = useDiscoveredDuckiebotInfo();
+  const { callServiceOnBot } = useMultiRos();
   const router = useRouter();
 
   // If real bots are discovered use them; otherwise fall back to the demo set
@@ -55,6 +57,29 @@ export default function Map3DScreen() {
   const livePoses = useRobotPoses(botNames);
   const livePaths = useRobotPaths(botNames);
 
+  /**
+   * Called by MapCanvas when the user picks a target point in Global Path mode.
+   * Invokes `/<botName>/graph_search` with the ROS-frame (x, y) coordinates.
+   */
+  const handleGlobalPathTarget = useCallback(
+    (botName: string, targetX: number, targetY: number) => {
+      console.log(`[GlobalPath] ${botName} → target_x=${targetX.toFixed(3)}, target_y=${targetY.toFixed(3)}`);
+      callServiceOnBot(
+        botName,
+        `/${botName}/graph_search`,
+        'duckietown_msgs/GraphSearchSrv',
+        { target_x: targetX, target_y: targetY },
+      ).then((result) => {
+        console.log(`[GlobalPath] ${botName} graph_search result:`, result);
+        Alert.alert("Success", "Global plan is sent.");
+      }).catch((err) => {
+        console.warn(`[GlobalPath] ${botName} graph_search failed:`, err);
+        Alert.alert("Error", "Clicked to wrong location.");
+      });
+    },
+    [callServiceOnBot],
+  );
+
   const livePoseCount = Object.keys(livePoses).length;
   const usingFallback = duckiebots.length === 0;
 
@@ -62,7 +87,7 @@ export default function Map3DScreen() {
     return (
       <View style={{ flex: 1, width: '100%', height: '100%', position: 'relative' }}>
         <div style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}>
-          <MapCanvas robots={mappedRobots} livePoses={livePoses} livePaths={livePaths} />
+          <MapCanvas robots={mappedRobots} livePoses={livePoses} livePaths={livePaths} onCallService={handleGlobalPathTarget} />
         </div>
 
         {/* Back button */}
@@ -109,7 +134,7 @@ export default function Map3DScreen() {
   // Mobile — Metro automatically picks MapCanvas.native.tsx on iOS/Android
   return (
     <View style={{ flex: 1 }}>
-      <MapCanvas robots={mappedRobots} livePoses={livePoses} livePaths={livePaths} />
+      <MapCanvas robots={mappedRobots} livePoses={livePoses} livePaths={livePaths} onCallService={handleGlobalPathTarget} />
 
       {/* Back button */}
       <Button

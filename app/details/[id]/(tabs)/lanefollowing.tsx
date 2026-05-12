@@ -1,11 +1,11 @@
 import { useActiveDuckiebot } from "@/context/ActiveDuckiebotContext";
 import { useEffect, useRef, useState } from "react";
 import {
-  ActivityIndicator,
-  Platform,
-  StyleSheet,
-  View,
-  useWindowDimensions,
+    ActivityIndicator,
+    Platform,
+    StyleSheet,
+    View,
+    useWindowDimensions,
 } from "react-native";
 import WebView from "react-native-webview";
 import { Button, Stack, Text, XStack, YStack } from "tamagui";
@@ -70,8 +70,8 @@ export default function HomeScreen() {
         lastUpdate.current = now;
       }
     });
-    return () => unsubscribe;
-  }, [connectionStatus, duckiebot?.name, hasData, isWeb]);
+    return unsubscribe;
+  }, [connectionStatus, duckiebot?.name, hasData, isWeb, subscribe]);
 
   return (
     <View style={styles.container}>

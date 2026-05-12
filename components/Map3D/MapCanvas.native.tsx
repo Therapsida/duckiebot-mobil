@@ -17,6 +17,11 @@ interface MapCanvasProps {
   robots?: MapRobot[];
   livePoses?: RobotPoseMap;
   livePaths?: RobotPathMap;
+  /**
+   * Called when the user activates Global Path mode and taps a point on the map.
+   * Receives the ROS-frame target coordinates to send to the graph_search service.
+   */
+  onCallService?: (botName: string, targetX: number, targetY: number) => void;
 }
 
 function lerpAngle(a: number, b: number, t: number) {
@@ -164,7 +169,7 @@ const FALLBACK: MapRobot[] = [
 
 // ─── component ────────────────────────────────────────────────────────────────
 
-export const MapCanvas: React.FC<MapCanvasProps> = ({ robots = [], livePoses = {}, livePaths = {} }) => {
+export const MapCanvas: React.FC<MapCanvasProps> = ({ robots = [], livePoses = {}, livePaths = {}, onCallService }) => {
   const router = useRouter();
   const bots = robots.length > 0 ? robots : FALLBACK;
 
@@ -191,6 +196,14 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({ robots = [], livePoses = {
 
   const [selIdx, setSelIdx] = useState<number | null>(null);
   const selIdxRef = useRef<number | null>(null);
+
+  /** When true, next tap picks a target point for graph_search */
+  const [globalPathMode, setGlobalPathMode] = useState(false);
+  const globalPathModeRef = useRef(false);
+  const globalPathBotRef = useRef<string | null>(null);
+
+  // Ground plane for picking (added once the GL context exists)
+  const groundPlaneRef = useRef<THREE.Mesh | null>(null);
 
   const transitionRef = useRef({
     active: false,
@@ -233,6 +246,15 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({ robots = [], livePoses = {
     scene.fog = new THREE.Fog(0xff8c69, 12, 45);
 
     buildSkyboxAsync(scene);
+
+    // Invisible ground plane for global-path target picking
+    const groundPlane = new THREE.Mesh(
+      new THREE.PlaneGeometry(200, 200),
+      new THREE.MeshBasicMaterial({ visible: false, side: THREE.DoubleSide }),
+    );
+    groundPlane.rotation.x = -Math.PI / 2;
+    scene.add(groundPlane);
+    groundPlaneRef.current = groundPlane;
 
     const camera = new THREE.PerspectiveCamera(75, W / H, 0.1, 1000);
     camera.position.set(-2.5, 2.5, 1.5);
@@ -372,6 +394,23 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({ robots = [], livePoses = {
         const nx = (tapStart.current.x / w) * 2 - 1, ny = -(tapStart.current.y / h) * 2 + 1;
         const ray = new THREE.Raycaster();
         ray.setFromCamera(new THREE.Vector2(nx, ny), cameraRef.current);
+
+        // ── Global Path mode: pick a ground point ──
+        if (globalPathModeRef.current && globalPathBotRef.current && groundPlaneRef.current) {
+          const groundHits = ray.intersectObject(groundPlaneRef.current);
+          if (groundHits.length > 0) {
+            const pt = groundHits[0].point;
+            // Invert pose mapping: ros_x = -threejs_z*(6/10), ros_y = -threejs_x*(6/10)
+            const rosX = -pt.z * (6 / 10);
+            const rosY = -pt.x * (6 / 10);
+            onCallService?.(globalPathBotRef.current, rosX, rosY);
+          }
+          globalPathModeRef.current = false;
+          setGlobalPathMode(false);
+          return;
+        }
+
+        // ── Normal robot selection ──
         const hits = ray.intersectObjects(robotsRef.current, true);
         let hi = -1;
         if (hits.length > 0) { const obj = hits[0].object; robotsRef.current.forEach((g, i) => g.traverse((c) => { if (c === obj) hi = i; })); }
@@ -390,6 +429,8 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({ robots = [], livePoses = {
 
   const selBot = selIdx !== null ? (robotDataRef.current[selIdx] ?? null) : null;
   const selPose = selBot ? livePoses[selBot.name] : null;
+  const selPath = selBot ? livePaths[selBot.name] : null;
+  const hasPath = !!selPath && selPath.waypoints.length > 1;
 
   return (
     <GestureHandlerRootView style={s.root}>
@@ -426,6 +467,29 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({ robots = [], livePoses = {
             </TouchableOpacity>
           </View>
 
+          {/* Global Path button */}
+          <TouchableOpacity
+            disabled={hasPath}
+            style={[
+              s.buttonGlobalPath,
+              {
+                borderColor: hasPath ? 'rgba(255,255,255,0.3)' : selBot.color,
+                backgroundColor: globalPathMode ? selBot.color : 'transparent',
+                opacity: hasPath ? 0.5 : 1,
+              },
+            ]}
+            onPress={() => {
+              if (hasPath) return;
+              globalPathBotRef.current = selBot.name;
+              globalPathModeRef.current = true;
+              setGlobalPathMode(true);
+            }}
+          >
+            <Text style={[s.buttonText, { color: hasPath ? 'rgba(255,255,255,0.3)' : (globalPathMode ? '#000' : selBot.color) }]}>
+              {hasPath ? '🚫 Path Active' : (globalPathMode ? '🎯 Tap target on map…' : '🗺 Global Path')}
+            </Text>
+          </TouchableOpacity>
+
           <TouchableOpacity onPress={() => { selIdxRef.current = null; setSelIdx(null); }} style={{ marginTop: 12, alignItems: 'center' }}>
             <Text style={s.desel}>tap to deselect</Text>
           </TouchableOpacity>
@@ -451,5 +515,6 @@ const s = StyleSheet.create({
   buttonRow: { flexDirection: 'row', gap: 8, marginTop: 12 },
   buttonPrimary: { flex: 1, padding: 8, borderRadius: 6, alignItems: 'center', justifyContent: 'center' },
   buttonSecondary: { flex: 1, padding: 8, borderRadius: 6, borderWidth: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: 'transparent' },
+  buttonGlobalPath: { marginTop: 8, padding: 8, borderRadius: 6, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
   buttonText: { fontWeight: 'bold', fontSize: 12, fontFamily: 'SilkscreenBold' },
 });

@@ -6,10 +6,10 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import 'react-native-reanimated';
 import { TamaguiProvider, Theme } from 'tamagui';
-import config from '../tamagui.config'; // Dosya yoluna dikkat et
+import config from '../tamagui.config';
 
-import { RosProvider } from '@/context/RosContext';
-import { DuckiebotProvider } from "../context/DuckiebotContext";
+import { DuckiebotProvider } from "@/context/DuckiebotContext";
+import { MultiRosProvider } from '@/context/RosContext';
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
@@ -30,16 +30,23 @@ export default function RootLayout() {
   return (
     <TamaguiProvider config={config}>
       <Theme name="pixel-duck">
-    
+
+      {/*
+        Provider order matters:
+          DuckiebotProvider  — discovers robots, exposes showMocks toggle
+            MultiRosProvider — consumes DuckiebotContext to auto-connect each
+                               real robot as soon as it is discovered; keeps
+                               connections alive forever (auto-reconnect).
+      */}
       <DuckiebotProvider>
-        <RosProvider> 
-        <Stack>
-          <Stack.Screen name="index" options={{ headerShown: false }} />
-          <Stack.Screen name="qr" options={{ headerShown: false }} />
-          <Stack.Screen name="map-3d" options={{ headerShown: false }} />
-          <Stack.Screen name="details/[id]" options={{ headerShown: false }} />
-        </Stack>
-      </RosProvider>
+        <MultiRosProvider>
+          <Stack>
+            <Stack.Screen name="index" options={{ headerShown: false }} />
+            <Stack.Screen name="qr" options={{ headerShown: false }} />
+            <Stack.Screen name="map-3d" options={{ headerShown: false }} />
+            <Stack.Screen name="details/[id]" options={{ headerShown: false }} />
+          </Stack>
+        </MultiRosProvider>
       </DuckiebotProvider>
 
       <StatusBar style="auto" />

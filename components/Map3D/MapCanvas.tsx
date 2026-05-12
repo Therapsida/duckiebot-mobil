@@ -40,6 +40,8 @@ interface MapCanvasProps {
   livePoses?: RobotPoseMap;
   /** Live ROS paths keyed by bot name. Renders waypoints as colored lines. */
   livePaths?: RobotPathMap;
+
+  onCallService?: (botName: string, targetX: number, targetY: number) => void;
 }
 
 const CAMERA_BOUNDS = {
@@ -50,7 +52,7 @@ const CAMERA_BOUNDS = {
 
 // ─── component ───────────────────────────────────────────────────────────────
 
-export const MapCanvas: React.FC<MapCanvasProps> = ({ robots = [], livePoses = {}, livePaths = {} }) => {
+export const MapCanvas: React.FC<MapCanvasProps> = ({ robots = [], livePoses = {}, livePaths = {}, onCallService }) => {
   const router = useRouter();
   const containerRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<THREE.Scene | null>(null);
@@ -79,6 +81,11 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({ robots = [], livePoses = {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [selectedRobotIndex, setSelectedRobotIndex] = useState<number | null>(null);
   const selectedIdxRef = useRef<number | null>(null);
+
+  /** When true, next canvas click picks a target point for graph_search */
+  const [globalPathMode, setGlobalPathMode] = useState(false);
+  const globalPathModeRef = useRef(false);
+  const globalPathBotRef = useRef<string | null>(null);
 
   const transitionRef = useRef({
     active: false,
@@ -457,12 +464,38 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({ robots = [], livePoses = {
     };
     const onMouseUp = () => { };
 
+    // Invisible ground plane for picking global-path target points
+    const groundPlane = new THREE.Mesh(
+      new THREE.PlaneGeometry(200, 200),
+      new THREE.MeshBasicMaterial({ visible: false, side: THREE.DoubleSide }),
+    );
+    groundPlane.rotation.x = -Math.PI / 2;
+    groundPlane.position.y = 0;
+    scene.add(groundPlane);
+
     const onCanvasClick = (e: MouseEvent) => {
       if (isDragging || !containerRef.current) return;
       const rect = renderer.domElement.getBoundingClientRect();
       mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
       mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
       raycaster.setFromCamera(mouse, camera);
+
+      // ── Global Path mode: pick a world position then call graph_search ──
+      if (globalPathModeRef.current && globalPathBotRef.current) {
+        const groundHits = raycaster.intersectObject(groundPlane);
+        if (groundHits.length > 0) {
+          const pt = groundHits[0].point;
+          // Invert the pose mapping: ros_x = -threejs_z * (6/10), ros_y = -threejs_x * (6/10)
+          const rosX = -pt.z * (6 / 10);
+          const rosY = -pt.x * (6 / 10);
+          onCallService?.(globalPathBotRef.current, rosX, rosY);
+        }
+        globalPathModeRef.current = false;
+        setGlobalPathMode(false);
+        return;
+      }
+
+      // ── Normal robot selection ──
       const hits = raycaster.intersectObjects(robotsRef.current, true);
       let clicked = -1;
       if (hits.length > 0) {
@@ -599,6 +632,7 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({ robots = [], livePoses = {
   }, []);
 
   useEffect(() => { selectedIdxRef.current = selectedRobotIndex; }, [selectedRobotIndex]);
+  useEffect(() => { globalPathModeRef.current = globalPathMode; }, [globalPathMode]);
 
   const handleFullscreen = () => {
     if (!containerRef.current) return;
@@ -615,10 +649,21 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({ robots = [], livePoses = {
     selectedRobotIndex !== null ? robotDataRef.current[selectedRobotIndex] : null;
   const selectedPose =
     selectedBot ? livePoses[selectedBot.name] : null;
+  const selectedPath =
+    selectedBot ? livePaths[selectedBot.name] : null;
+  const hasPath = !!selectedPath && selectedPath.waypoints.length > 1;
 
   return (
     <>
-      <div ref={containerRef} style={{ width: '100%', height: '100%', position: 'relative' }} />
+      <div
+        ref={containerRef}
+        style={{
+          width: '100%',
+          height: '100%',
+          position: 'relative',
+          cursor: globalPathMode ? 'crosshair' : 'default',
+        }}
+      />
 
       <button
         onClick={handleFullscreen}
@@ -699,6 +744,33 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({ robots = [], livePoses = {
               Drive
             </button>
           </div>
+
+          {/* Global Path button */}
+          <button
+            disabled={hasPath}
+            onClick={() => {
+              if (hasPath) return;
+              globalPathBotRef.current = selectedBot.name;
+              globalPathModeRef.current = true;
+              setGlobalPathMode(true);
+            }}
+            style={{
+              width: '100%',
+              marginTop: 8,
+              padding: '8px',
+              background: globalPathMode ? selectedBot.color : (hasPath ? 'transparent' : 'transparent'),
+              color: globalPathMode ? '#000' : (hasPath ? 'rgba(255,255,255,0.3)' : selectedBot.color),
+              border: `1px solid ${hasPath ? 'rgba(255,255,255,0.3)' : selectedBot.color}`,
+              borderRadius: 6,
+              cursor: hasPath ? 'not-allowed' : 'pointer',
+              fontWeight: 'bold',
+              fontSize: 12,
+              fontFamily: 'SilkscreenBold, monospace',
+              transition: 'background 0.2s, color 0.2s',
+            }}
+          >
+            {hasPath ? 'Path Active' : (globalPathMode ? 'Click target on map…' : 'Global Path')}
+          </button>
 
           <div
             style={{ marginTop: 12, cursor: 'pointer', fontSize: 11, opacity: 0.5, textAlign: 'center', fontFamily: 'Silkscreen, monospace' }}

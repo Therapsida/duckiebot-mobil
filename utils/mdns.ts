@@ -6,6 +6,8 @@ export interface DiscoveredRobotInfo {
   ip: string;
   type: string;
   configuration: string;
+  /** True for locally-injected demo robots that have no real ROS bridge */
+  isMock?: boolean;
 }
 
 export type MdnsCallback = (service: DiscoveredRobotInfo) => void;

@@ -5,7 +5,7 @@ import { Button, Image, Spinner, Text, XStack, YStack } from 'tamagui';
 import { useRouter } from 'expo-router';
 
 export default function HomeScreen() {
-  const { duckiebot, connectionStatus, serviceCall, retryConnection } = useActiveDuckiebot();
+  const { duckiebot, connectionStatus, serviceCall } = useActiveDuckiebot();
   const router = useRouter();
 
   const renderStatus = () => {
@@ -42,9 +42,9 @@ export default function HomeScreen() {
             <Text color="$red10" fontFamily="$heading" fontSize="$4">
               CONNECTION FAILED
             </Text>
-            <Button size="$3" onPress={retryConnection} theme="red">
-              Retry
-            </Button>
+            <Text fontFamily="$body" fontSize="$2" color="$gray10">
+              Reconnecting automatically…
+            </Text>
           </YStack>
         );
 
