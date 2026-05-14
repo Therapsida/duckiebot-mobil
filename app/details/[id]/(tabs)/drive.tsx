@@ -96,10 +96,19 @@ const VideoStream: React.FC<VideoStreamProps> = () => {
       const speed = throttleValue.value;
       const steer = steerValue.value;
 
+      var speedValue;
+      if (speed > 0) {
+        speedValue = 1;
+      } else if (speed < 0) {
+        speedValue = -1;
+      } else {
+        speedValue = 0;
+      }
+
       publish(`/joy_mapper_node/car_cmd`, "duckietown_msgs/Twist2DStamped", {
         header: { seq: 0, stamp: { secs: 0, nsecs: 0 }, frame_id: "" },
-        v: speed,
-        omega: steer * speed,
+        v: speed * 0.41 * 0.6,
+        omega: -steer * speedValue * 3.2 * 1.6,
       });
     }, 100);
 
@@ -109,13 +118,11 @@ const VideoStream: React.FC<VideoStreamProps> = () => {
   useFocusEffect(
     useCallback(() => {
       const lockLandscape = async () => {
-        if (!isWeb) {
-          try {
-            await ScreenOrientation.lockAsync(
-              ScreenOrientation.OrientationLock.LANDSCAPE,
-            );
-          } catch (e) {}
-        }
+        try {
+          await ScreenOrientation.lockAsync(
+            ScreenOrientation.OrientationLock.LANDSCAPE,
+          );
+        } catch (e) {}
         navigation.setOptions({ tabBarStyle: { display: "none" } });
       };
       lockLandscape();
@@ -132,21 +139,17 @@ const VideoStream: React.FC<VideoStreamProps> = () => {
       return () => {
         subscription?.remove();
         navigation.setOptions({ tabBarStyle: undefined });
-        if (!isWeb) {
-          ScreenOrientation.lockAsync(
-            ScreenOrientation.OrientationLock.PORTRAIT_UP,
-          ).catch(() => {});
-        }
+        ScreenOrientation.lockAsync(
+          ScreenOrientation.OrientationLock.PORTRAIT_UP,
+        ).catch(() => {});
       };
     }, [isWeb, navigation]),
   );
 
   const handleBack = async () => {
-    if (!isWeb) {
-      await ScreenOrientation.lockAsync(
-        ScreenOrientation.OrientationLock.PORTRAIT_UP,
-      ).catch(() => {});
-    }
+    ScreenOrientation.lockAsync(
+      ScreenOrientation.OrientationLock.PORTRAIT_UP,
+    ).catch(() => {});
     router.back();
   };
 
@@ -154,9 +157,23 @@ const VideoStream: React.FC<VideoStreamProps> = () => {
     if (!isWeb || typeof window === "undefined") return;
     try {
       if (!document.fullscreenElement) {
-        await document.documentElement.requestFullscreen();
+        if (document.documentElement.requestFullscreen) {
+          await document.documentElement.requestFullscreen();
+        } else if ((document.documentElement as any).webkitRequestFullscreen) {
+          await (document.documentElement as any).webkitRequestFullscreen();
+        }
+        await ScreenOrientation.lockAsync(
+          ScreenOrientation.OrientationLock.LANDSCAPE,
+        ).catch(() => {});
       } else {
-        await document.exitFullscreen();
+        if (document.exitFullscreen) {
+          await document.exitFullscreen();
+        } else if ((document as any).webkitExitFullscreen) {
+          await (document as any).webkitExitFullscreen();
+        }
+        await ScreenOrientation.lockAsync(
+          ScreenOrientation.OrientationLock.PORTRAIT_UP,
+        ).catch(() => {});
       }
     } catch (e) {
       console.warn("Fullscreen error:", e);
@@ -170,16 +187,25 @@ const VideoStream: React.FC<VideoStreamProps> = () => {
     return () => document.removeEventListener("fullscreenchange", updateFs);
   }, [isWeb]);
 
-  const updateSteerFromPoint = (x: number, y: number) => {
-    const centerX = COMPONENT_SIZE / 2;
-    const centerY = COMPONENT_SIZE / 2;
-    const deltaX = x - centerX;
-    const deltaY = y - centerY;
-    let angleDeg = Math.atan2(deltaY, deltaX) * (180 / Math.PI) + 90;
-    if (angleDeg > 180) angleDeg -= 360;
-    const clampedAngle = Math.max(-100, Math.min(100, angleDeg));
-    rotation.value = clampedAngle;
-    handleSteer(clampedAngle / 100);
+  const steerTranslateX = useSharedValue(0);
+  const MAX_STEER_MOVE = 100;
+
+  const updateSteerFromPoint = (
+    startX: number,
+    startVal: number,
+    currentX: number,
+  ) => {
+    const deltaX = currentX - startX;
+    const newX = Math.max(
+      -MAX_STEER_MOVE,
+      Math.min(MAX_STEER_MOVE, startVal + deltaX),
+    );
+    steerTranslateX.value = newX;
+
+    // Map the horizontal translation to rotation (-100 to 100 degrees)
+    const mappedRotation = (newX / MAX_STEER_MOVE) * 100;
+    rotation.value = mappedRotation;
+    handleSteer(mappedRotation / 100);
   };
 
   const updateThrottleFromPoint = (
@@ -196,7 +222,9 @@ const VideoStream: React.FC<VideoStreamProps> = () => {
     handleThrottle(-newY / MAX_THROTTLE_MOVE);
   };
 
-  const steerActiveRef = useRef(false);
+  const steerActiveRef = useRef<{ startX: number; startVal: number } | null>(
+    null,
+  );
   const throttleActiveRef = useRef<{ startY: number; startVal: number } | null>(
     null,
   );
@@ -249,8 +277,10 @@ const VideoStream: React.FC<VideoStreamProps> = () => {
           ...activeTrackers.value,
           [touch.id]: {
             target,
+            startX: touch.x,
             startY: touch.y,
-            startVal: target === "steer" ? rotation.value : translateY.value,
+            startVal:
+              target === "steer" ? steerTranslateX.value : translateY.value,
           },
         };
       }
@@ -270,13 +300,15 @@ const VideoStream: React.FC<VideoStreamProps> = () => {
           translateY.value = newY;
           runOnJS(handleThrottle)(-newY / MAX_THROTTLE_MOVE);
         } else {
-          const dx = touch.x - (MARGIN + COMPONENT_SIZE / 2);
-          const dy = touch.y - (height - MARGIN - COMPONENT_SIZE / 2);
-          let angle = Math.atan2(dy, dx) * (180 / Math.PI) + 90;
-          if (angle > 180) angle -= 360;
-          const clamped = Math.max(-100, Math.min(100, angle));
-          rotation.value = clamped;
-          runOnJS(handleSteer)(clamped / 100);
+          const deltaX = touch.x - tracker.startX;
+          const newX = Math.max(
+            -MAX_STEER_MOVE,
+            Math.min(MAX_STEER_MOVE, tracker.startVal + deltaX),
+          );
+          steerTranslateX.value = newX;
+          const mappedRotation = (newX / MAX_STEER_MOVE) * 100;
+          rotation.value = mappedRotation;
+          runOnJS(handleSteer)(mappedRotation / 100);
         }
       }
     })
@@ -288,6 +320,7 @@ const VideoStream: React.FC<VideoStreamProps> = () => {
             translateY.value = withSpring(0);
             runOnJS(handleThrottle)(0);
           } else {
+            steerTranslateX.value = withSpring(0);
             rotation.value = withSpring(0);
             runOnJS(handleSteer)(0);
           }
@@ -362,18 +395,23 @@ const VideoStream: React.FC<VideoStreamProps> = () => {
           style={[styles.controlContainer, isWeb && styles.controlContainerWeb]}
           onPointerDown={(e: any) => {
             if (isWeb) e.target.setPointerCapture(e.pointerId);
-            steerActiveRef.current = true;
-            updateSteerFromPoint(e.nativeEvent.offsetX, e.nativeEvent.offsetY);
+            steerActiveRef.current = {
+              startX: e.nativeEvent.pageX,
+              startVal: steerTranslateX.value,
+            };
           }}
           onPointerMove={(e: any) => {
-            if (steerActiveRef.current)
+            if (steerActiveRef.current) {
               updateSteerFromPoint(
-                e.nativeEvent.offsetX,
-                e.nativeEvent.offsetY,
+                steerActiveRef.current.startX,
+                steerActiveRef.current.startVal,
+                e.nativeEvent.pageX,
               );
+            }
           }}
           onPointerUp={(e: any) => {
-            steerActiveRef.current = false;
+            steerActiveRef.current = null;
+            steerTranslateX.value = withSpring(0);
             rotation.value = withSpring(0);
             handleSteer(0);
           }}
@@ -386,7 +424,7 @@ const VideoStream: React.FC<VideoStreamProps> = () => {
           onPointerDown={(e: any) => {
             if (isWeb) e.target.setPointerCapture(e.pointerId);
             throttleActiveRef.current = {
-              startY: e.nativeEvent.offsetY,
+              startY: e.nativeEvent.pageY,
               startVal: translateY.value,
             };
           }}
@@ -395,7 +433,7 @@ const VideoStream: React.FC<VideoStreamProps> = () => {
               updateThrottleFromPoint(
                 throttleActiveRef.current.startY,
                 throttleActiveRef.current.startVal,
-                e.nativeEvent.offsetY,
+                e.nativeEvent.pageY,
               );
             }
           }}

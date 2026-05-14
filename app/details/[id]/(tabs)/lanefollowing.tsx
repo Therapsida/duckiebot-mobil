@@ -1,11 +1,11 @@
 import { useActiveDuckiebot } from "@/context/ActiveDuckiebotContext";
 import { useEffect, useRef, useState } from "react";
 import {
-    ActivityIndicator,
-    Platform,
-    StyleSheet,
-    View,
-    useWindowDimensions,
+  ActivityIndicator,
+  Platform,
+  StyleSheet,
+  View,
+  useWindowDimensions,
 } from "react-native";
 import WebView from "react-native-webview";
 import { Button, Stack, Text, XStack, YStack } from "tamagui";
@@ -43,7 +43,6 @@ export default function HomeScreen() {
 </body>
 </html>
 `;
-
   useEffect(() => {
     if (!isConnected || !duckiebot?.name) return;
     const topicName = `/line_detector_node/debug/maps/compressed`;

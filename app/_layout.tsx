@@ -4,6 +4,7 @@ import { useFonts } from 'expo-font';
 import { SplashScreen, Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
+import * as ScreenOrientation from 'expo-screen-orientation';
 import 'react-native-reanimated';
 import { TamaguiProvider, Theme } from 'tamagui';
 import config from '../tamagui.config';
@@ -22,6 +23,7 @@ export default function RootLayout() {
   useEffect(() => {
     if (loaded) {
      SplashScreen.hideAsync();
+     ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP).catch(() => {});
     }
   }, [loaded])
 

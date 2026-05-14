@@ -3,9 +3,10 @@ import { useDiscoveredDuckiebotInfo } from '@/context/DuckiebotContext';
 import { useMultiRos } from '@/context/RosContext';
 import { useRobotPaths } from '@/hooks/useRobotPaths';
 import { useRobotPoses } from '@/hooks/useRobotPoses';
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useCallback, useMemo } from 'react';
 import { Platform, View, Alert } from 'react-native';
+import * as ScreenOrientation from 'expo-screen-orientation';
 import { Button, Text, YStack } from 'tamagui';
 
 // ── Coordinate system & Tile Size ───────────────────────────────────────
@@ -56,6 +57,16 @@ export default function Map3DScreen() {
   const botNames = useMemo(() => mappedRobots.map((r) => r.name), [mappedRobots]);
   const livePoses = useRobotPoses(botNames);
   const livePaths = useRobotPaths(botNames);
+
+  useFocusEffect(
+    useCallback(() => {
+      ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.LANDSCAPE).catch(() => {});
+
+      return () => {
+        ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP).catch(() => {});
+      };
+    }, [])
+  );
 
   /**
    * Called by MapCanvas when the user picks a target point in Global Path mode.
